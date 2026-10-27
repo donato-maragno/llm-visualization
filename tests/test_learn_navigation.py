@@ -39,8 +39,8 @@ def navigation_run():
     magnitude = deepcopy(pipeline)
     random = deepcopy(pipeline)
     for block in heads['layers']:
-        block['masked_heads'] = [0, 1, 2]
-        block['head_output'][:3] = [[[0, 0], [0, 0]]] * 3
+        block['masked_heads'] = [0]
+        block['head_output'][0] = [[0, 0], [0, 0]]
     for block in magnitude['layers'] + random['layers']:
         block.update(masked_weights=4, total_mlp_weights=8)
     topologies = [{"layers": [{"mlp_weights": [{"name": "mlp.c_fc.weight", "sample_values": [0.1] * 8,
@@ -50,7 +50,8 @@ def navigation_run():
         "id": "navigation-test", "revision": 1, "status": "completed",
         "config": {"prompt": pipeline["prompt"]},
         "walkthrough_presets": [{"technique": technique, "title": technique,
-                                 "inspection_layer": 0, "inspection_head": 0}
+                                 "inspection_layer": 0, "inspection_head": 0,
+                                 "strength": 1 if technique in ['layers', 'heads'] else 20}
                                 for technique in ['layers', 'heads', 'magnitude', 'random']],
         "baselines": {"0": {"pipeline": pipeline, "text": "Original test output", "tokens": 3}},
         "comparisons": {f"{i}:0": {"answer": {"pipeline": p, "text": "Pruned test output", "tokens": 3}}
@@ -225,6 +226,10 @@ def test_actual_pruning_overlays_and_raw_probabilities(learn_page):
     page.evaluate('run => window.gpt2View.render(run, true, 0, 1)', navigation_run())
     expect(diagram.locator('.head-out canvas').first).to_have_attribute('data-sample', '[0,0]')
     expect(diagram.locator('.head-mask-label')).to_contain_text('output zeroed')
+    expect(page.locator('.learn-preset-note')).to_contain_text('1 head output per layer is zeroed')
+    page.locator('#learn-head').select_option('1')
+    expect(diagram.locator('.head-mask-label')).to_have_count(0)
+    expect(diagram.locator('.head-out canvas').first).to_have_attribute('data-sample', '[0.1,-0.2]')
     page.locator('[data-model-state="original"]').click()
     expect(diagram.locator('.head-out canvas').first).to_have_attribute('data-sample', '[0.1,-0.2]')
     for variant in [2, 3]:
@@ -282,3 +287,23 @@ def test_first_bypassed_layer_is_transparent_and_stays_in_background(learn_page)
     expect(page.locator('#learn-layer')).to_have_value('0')
     expect(contour).to_have_attribute('data-bypassed-layer', '1')
     expect(diagram.locator('.bypassed-layer-context')).to_have_count(0)
+
+
+def test_learning_guide_is_readable_navigable_and_survives_model_switches(learn_page):
+    from playwright.sync_api import expect
+    page = learn_page
+    guide = page.locator('#learn-guide')
+    expect(guide.get_by_role('heading', name='How the LLM works—and what pruning changes')).to_be_visible()
+    assert guide.locator('.guide-chapter').count() == 9
+    guide.locator('.guide-contents a[href="#guide-pruning"]').click()
+    expect(page.locator('#guide-pruning')).to_be_in_viewport()
+    assert page.evaluate('location.hash') == '#guide-pruning'
+    guide.get_by_role('link', name='Return to the visualization ↑', exact=True).click()
+    page.locator('[data-model-state="pruned"]').click()
+    expect(guide.locator('#guide-attention-title')).to_have_text('Multi-head self-attention')
+    page.set_viewport_size({'width': 390, 'height': 844})
+    guide.locator('.guide-contents a[href="#guide-probabilities"]').click()
+    page.locator('.guide-details summary').click()
+    assert page.locator('.guide-details').get_attribute('open') is not None
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    assert guide.locator('input,textarea,select').count() == 0

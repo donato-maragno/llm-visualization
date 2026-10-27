@@ -82,6 +82,8 @@ def test_config_distinguishes_models_budgets_and_presets(lab):
     assert all(p["explanation"] and p["inspect"] for p in config["presets"])
     assert config["presets"][0]["layer_position"] == "first"
     assert config["presets"][0]["inspection_layer"] == 0
+    assert config["presets"][1]["strength"] == 1
+    assert config["presets"][1]["title"] == "Mask one attention head per layer"
     assert config["context_window"]==1024 and config["generation_token_cap"] is None
     qwen=client.get("/api/config").json()
     assert [model["id"] for model in qwen["models"]]==[DEFAULT_MODEL_NAME]
@@ -116,6 +118,7 @@ def test_walkthrough_runs_same_locked_sentence_for_all_presets_without_python(la
     assert record["config"]["prompt"]==WALKTHROUGH_SENTENCE
     assert record["config"]["variants"]==[{key:p[key] for key in ("technique","strength","layer_position") if key in p} for p in WALKTHROUGH_PRESETS]
     assert runtime.variants[0]["layer_position"] == "first"
+    assert runtime.variants[1] == {"technique": "heads", "strength": 1}
     assert runtime.prompts==[WALKTHROUGH_SENTENCE]*5
     assert runtime.loads==["gpt2"]
     assert runtime.restored==4 and not runtime.pruning
@@ -211,13 +214,14 @@ def test_ready_waits_if_worker_busy_and_no_cache_exists(lab):
         service.active=None
 
 
-@pytest.mark.parametrize("corruption", ["old_version", "last_layer_target", "missing_pipeline", "failed", "different_seed"])
+@pytest.mark.parametrize("corruption", ["old_version", "last_layer_target", "different_head_count", "missing_pipeline", "failed", "different_seed"])
 def test_ready_does_not_reuse_outdated_or_incomplete_results(lab,corruption):
     runtime,service,client,headers=lab
     record=prepare_example(lab)
     saved=service.runs[record["id"]]
     if corruption=="old_version":saved["walkthrough_version"]="prime-number-v1"
     elif corruption=="last_layer_target":saved["config"]["variants"][0].pop("layer_position")
+    elif corruption=="different_head_count":saved["config"]["variants"][1]["strength"]=3
     elif corruption=="missing_pipeline":del saved["comparisons"]["0:0"]["answer"]["pipeline"]
     elif corruption=="failed":saved["status"]="failed"
     else:saved["config"]["seed"]=123

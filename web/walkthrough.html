@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/navigation.css">
   <link rel="stylesheet" href="/static/gpt2.css">
   <link rel="stylesheet" href="/static/walkthrough.css">
+  <link rel="stylesheet" href="/static/learn-guide.css">
   <script src="/static/learn-explainer.js" defer></script>
   <script src="/static/walkthrough.js" defer></script>
 </head>
@@ -28,6 +29,180 @@
     <section id="walkthrough-progress" class="panel progress-panel" hidden aria-live="polite"><div><span id="walkthrough-status" class="tag"></span><span id="walkthrough-stage"></span><span id="walkthrough-count"></span></div><progress id="walkthrough-progress-bar" max="5" value="0"></progress></section>
     <section class="pruning-lessons" aria-label="Predefined pruning examples"><span>Pruning example</span><div id="walkthrough-presets" class="preset-grid" role="group" aria-label="Pruning presets"></div></section>
     <section id="gpt2-view" data-mode="walkthrough" class="learn-explainer" aria-label="GPT-2 input to output transformer visualization"></section>
+    <section id="learn-guide" class="learn-guide" aria-labelledby="learn-guide-title">
+      <header class="guide-header">
+        <span class="guide-eyebrow">A GUIDE TO WHAT YOU JUST SAW</span>
+        <h2 id="learn-guide-title">How the LLM works—and what pruning changes</h2>
+        <p>Follow a piece of text from tokens to a next-token prediction. Then see what happens when a layer, an attention head, or some weights stop contributing.</p>
+        <ul class="guide-model-facts" aria-label="GPT-2 small architecture">
+          <li><strong>124M</strong> parameters</li><li><strong>12</strong> transformer blocks</li><li><strong>12</strong> heads per block</li><li><strong>768</strong> features per token</li>
+        </ul>
+      </header>
+      <div class="guide-layout">
+        <nav class="guide-contents" aria-label="Learning guide chapters">
+          <span>IN THIS GUIDE</span>
+          <ol>
+            <li><a href="#guide-transformer">What is a Transformer?</a></li>
+            <li><a href="#guide-embedding">From text to embeddings</a></li>
+            <li><a href="#guide-blocks">Transformer blocks</a></li>
+            <li><a href="#guide-attention">Self-attention and Q/K/V</a></li>
+            <li><a href="#guide-mlp">The MLP</a></li>
+            <li><a href="#guide-probabilities">Next-token probabilities</a></li>
+            <li><a href="#guide-supporting">Normalization, shortcuts, dropout</a></li>
+            <li><a href="#guide-pruning">What is pruning?</a></li>
+            <li><a href="#guide-explore">Try it in this visualization</a></li>
+          </ol>
+          <a class="guide-back-to-viz" href="#gpt2-view">↑ Back to the visualization</a>
+        </nav>
+        <div class="guide-content">
+          <section id="guide-transformer" class="guide-chapter" aria-labelledby="guide-transformer-title">
+            <span class="guide-chapter-number">01 / THE BIG PICTURE</span>
+            <h3 id="guide-transformer-title">What is a Transformer?</h3>
+            <p>A Transformer is a neural-network architecture introduced in the 2017 paper <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener noreferrer">Attention Is All You Need</a>. Its central idea is attention: a way for a model to decide which parts of its input are useful to one another. Transformer-based systems now appear in language-model families such as GPT, Llama, and Gemini, as well as applications involving images, audio, proteins, and games.</p>
+            <p>A text-generating language model repeatedly asks: <strong>given the tokens so far, what token should come next?</strong> A token may be a word, a word fragment, a space-related fragment, or punctuation. The model predicts one token, appends it to the context, and repeats. Fluent text is built from many of these small steps—not from a single prediction of the whole answer.</p>
+            <p>This page uses <strong>GPT-2 small</strong>, a 124-million-parameter, decoder-only Transformer. It is much smaller and older than today's leading models, but its components provide a useful introduction. The 2017 Transformer included both an encoder and a decoder; GPT-2 uses a causal, decoder-only design for text continuation.</p>
+            <div class="guide-flow" role="group" aria-label="Architecture overview">
+              <span>Text → embeddings</span><span>12 × attention + MLP</span><span>Next-token probabilities</span>
+            </div>
+          </section>
+
+          <section id="guide-embedding" class="guide-chapter" aria-labelledby="guide-embedding-title">
+            <span class="guide-chapter-number">02 / REPRESENTING THE INPUT</span>
+            <h3 id="guide-embedding-title">From text to embeddings</h3>
+            <p>Neural networks work with numbers, not written words. The embedding stage gives each token a numerical representation and adds information about its position.</p>
+            <ol class="guide-steps">
+              <li><strong>Tokenize the text.</strong> A tokenizer splits a prompt into pieces and assigns each piece an ID. A word is not necessarily one token: uncommon words and misspellings often split into smaller fragments. GPT-2 has a vocabulary of <strong>50,257 tokens</strong>; the split and IDs are determined by its tokenizer, not chosen anew for each prompt.</li>
+              <li><strong>Look up a token vector.</strong> Each ID selects a learned row from the token-embedding matrix. GPT-2 small uses <strong>768 numbers per token</strong>, so its 50,257 × 768 lookup table contains about 38.6 million parameters. Training adjusts these vectors to capture useful patterns in how tokens are used.</li>
+              <li><strong>Add position information.</strong> Word order matters. GPT-2 learns a separate position-embedding table, allowing the model to distinguish a token near the beginning from the same token later in the sequence. Other model families may encode position differently.</li>
+              <li><strong>Combine the two.</strong> Adding the token vector and its position vector produces the representation that enters the first block.</li>
+            </ol>
+            <p class="guide-formula">Input representation = token embedding + position embedding</p>
+            <p class="guide-observe"><strong>Look above:</strong> expand Embedding to inspect token IDs and position information. The pruning presets leave these input embeddings unchanged. The colored vector textures show measured samples, not all 768 dimensions.</p>
+          </section>
+
+          <section id="guide-blocks" class="guide-chapter" aria-labelledby="guide-blocks-title">
+            <span class="guide-chapter-number">03 / PROCESSING THE SEQUENCE</span>
+            <h3 id="guide-blocks-title">Transformer blocks</h3>
+            <p>GPT-2 small passes the sequence through <strong>12 transformer blocks</strong>. Each block contains multi-head self-attention and a feed-forward MLP, along with normalization and residual shortcuts. A block receives the current representation of every token and produces an updated representation for the next block.</p>
+            <p>The two main operations have different jobs: <strong>attention mixes information between tokens</strong>, while <strong>the MLP transforms the features of each token separately</strong>. Repeating them lets later layers work with information assembled by earlier ones.</p>
+            <p class="guide-observe"><strong>Layer is not head:</strong> changing Layer selects a transformer block; changing Head selects one attention head inside that block. Navigating the diagram only changes what you inspect—it does not skip layers in the actual model.</p>
+          </section>
+
+          <section id="guide-attention" class="guide-chapter" aria-labelledby="guide-attention-title">
+            <span class="guide-chapter-number">04 / SHARING INFORMATION</span>
+            <h3 id="guide-attention-title">Multi-head self-attention</h3>
+            <p>Self-attention lets a token gather information from the sequence around it. Different heads can learn different patterns of interaction, although heads do not come with fixed, human-assigned roles such as “grammar” or “meaning.” GPT-2 small uses <strong>12 heads per block</strong>, with 64 dimensions per head.</p>
+            <h4>Query, Key, and Value: three views of a token</h4>
+            <p>Learned linear projections turn each normalized token representation into a <strong>Query (Q)</strong>, a <strong>Key (K)</strong>, and a <strong>Value (V)</strong>. A search analogy helps:</p>
+            <dl class="guide-qkv">
+              <div><dt>Query</dt><dd>What information is this token looking for? Think of the search request.</dd></div>
+              <div><dt>Key</dt><dd>What information can another token be matched on? Think of a result's searchable description.</dd></div>
+              <div><dt>Value</dt><dd>What content should be passed along if that token is selected? Think of the result's content.</dd></div>
+            </dl>
+            <h4>How one attention head is computed</h4>
+            <ol class="guide-steps">
+              <li><strong>Compare queries and keys.</strong> QKᵀ produces a score for each query–key pair. Dividing by the square root of the head dimension keeps the score scale more manageable. In GPT-2 small, that dimension is 64.</li>
+              <li><strong>Hide future positions.</strong> A causal mask blocks positions to the right of the query. Those scores become negative infinity before softmax, so a token cannot use future text when predicting what follows it. A position may attend to itself and earlier positions.</li>
+              <li><strong>Convert scores to attention weights.</strong> Softmax produces nonnegative weights that sum to one in each row. These weights describe how strongly the query combines the available values; they are not next-token vocabulary probabilities.</li>
+              <li><strong>Combine the values.</strong> Multiplying the weights by V creates the head's output. The outputs from all 12 heads are concatenated and passed through a learned output projection.</li>
+            </ol>
+            <p class="guide-formula">Attention(Q, K, V) = softmax(QKᵀ / √d + causal mask) V</p>
+            <p class="guide-observe"><strong>Look above:</strong> click the attention matrix to expand scores, the causal mask, and softmax. With Head masking selected on the Pruned side, <strong>head 1 is masked in every layer</strong>. Its attention can still be visible, but its output contribution is zero. Heads 2–12 are not masked.</p>
+          </section>
+
+          <section id="guide-mlp" class="guide-chapter" aria-labelledby="guide-mlp-title">
+            <span class="guide-chapter-number">05 / REFINING EACH TOKEN</span>
+            <h3 id="guide-mlp-title">The MLP: a feed-forward network</h3>
+            <p>After the attention update, the MLP applies the same learned network to each token independently. Unlike attention, it does not directly combine different token positions. It works on features in a representation that already contains contextual information.</p>
+            <p>In GPT-2 small, one linear transformation expands the vector from <strong>768 to 3,072 dimensions</strong>. A nonlinear <strong>GELU</strong> activation lets the network express more complex transformations than a single linear map. A second linear transformation brings the result back to <strong>768 dimensions</strong>, ready to be added to the residual stream.</p>
+            <div class="guide-flow" role="group" aria-label="MLP dimensions"><span>768 features</span><span>3,072 features + GELU</span><span>768 features</span></div>
+            <p class="guide-observe"><strong>Look above:</strong> Magnitude and Random pruning mask MLP parameters. Coral tiles mark masked positions in the weight sample. Unrecorded intermediate vectors are architectural placeholders; the measured inspector shows actual MLP output samples.</p>
+          </section>
+
+          <section id="guide-probabilities" class="guide-chapter" aria-labelledby="guide-probabilities-title">
+            <span class="guide-chapter-number">06 / CHOOSING WHAT COMES NEXT</span>
+            <h3 id="guide-probabilities-title">From representations to output probabilities</h3>
+            <p>After the final block and layer normalization, a vocabulary projection produces one score, called a <strong>logit</strong>, for each of GPT-2's 50,257 possible tokens. Softmax converts those scores into a distribution whose probabilities sum to one across the <em>whole vocabulary</em>.</p>
+            <p>The last input position predicts the first token of the continuation. Selecting an earlier position inspects what could follow that earlier prefix. The next-token process repeats as generation extends the sequence.</p>
+            <p class="guide-observe"><strong>Read the chart carefully:</strong> it shows only the top candidates, without rescaling them to sum to 100%. “Other tokens” accounts for the remaining vocabulary. The expanded view labels log probabilities as <strong>log p</strong>, not raw logits. A confident prediction is not evidence that a statement is true.</p>
+            <details class="guide-details">
+              <summary>Background: temperature, top-k, and top-p sampling</summary>
+              <div>
+                <p>Many language-model applications sample the next token rather than always taking the highest-scoring option. These settings alter that selection process:</p>
+                <ul>
+                  <li><strong>Temperature:</strong> for a positive temperature T, divide logits by T before softmax. T = 1 leaves the distribution unchanged; values below 1 sharpen it, while values above 1 flatten it. Lower temperature alone does not make sampling fully deterministic.</li>
+                  <li><strong>Top-k:</strong> sample only from the k highest-probability tokens, renormalizing within that candidate set.</li>
+                  <li><strong>Top-p:</strong> sample from the smallest leading set whose cumulative probability reaches a chosen threshold p, again renormalizing within that set.</li>
+                </ul>
+                <p><strong>These are general concepts, not controls on this page.</strong> This lab uses greedy decoding with repetition penalty 1.1 and a no-repeated-3-grams rule. The chart shows raw model probabilities before those repetition controls, so the continuation may differ from the chart's top candidate.</p>
+              </div>
+            </details>
+          </section>
+
+          <section id="guide-supporting" class="guide-chapter" aria-labelledby="guide-supporting-title">
+            <span class="guide-chapter-number">07 / THE SUPPORTING PARTS</span>
+            <h3 id="guide-supporting-title">Normalization, residual connections, and dropout</h3>
+            <h4>Layer normalization keeps feature scales manageable</h4>
+            <p>Layer normalization normalizes a token's features and applies learned scale and offset parameters. It helps stabilize optimization. GPT-2 uses a pre-normalization design: normalization comes before attention and before the MLP, with one more normalization after the final block. It also remains part of inference.</p>
+            <h4>Residual connections preserve a running representation</h4>
+            <p>Instead of replacing the representation with each sublayer's result, a residual connection adds an update to it. These shortcuts help information and training gradients move through a deep network. In a simplified GPT-2 block, with inference-time dropout inactive:</p>
+            <div class="guide-formula"><div>u = x + Attention(LayerNorm(x))</div><div>y = u + MLP(LayerNorm(u))</div></div>
+            <p>This running representation is often called the <strong>residual stream</strong>. Bypassing a whole block preserves that stream by setting y = x; it is not the same as replacing the whole block's output with zeros.</p>
+            <h4>Dropout is a training technique—not permanent pruning</h4>
+            <p>During training, dropout randomly zeros selected <strong>activations or attention weights</strong> and rescales the surviving values. It discourages reliance on a narrow set of signals. Standard dropout does not permanently erase the model's learned parameters. It is switched off during this lab's inference runs, unlike a pruning mask that is deliberately kept active for a comparison.</p>
+          </section>
+
+          <section id="guide-pruning" class="guide-chapter" aria-labelledby="guide-pruning-title">
+            <span class="guide-chapter-number">08 / REMOVING CONTRIBUTIONS</span>
+            <h3 id="guide-pruning-title">What is pruning?</h3>
+            <p><strong>Pruning removes or suppresses selected parts of a neural network.</strong> Depending on the method, those parts may be individual weights, attention heads, or entire blocks. The aim is often to reduce computation or storage while retaining useful behavior. Whether that succeeds depends on what is removed, how the model is implemented, and how quality is evaluated.</p>
+            <p>Here, pruning is a reversible experiment: compare the original model with a masked version on the same input. The presets do not retrain the model or automatically repair its behavior.</p>
+            <div class="guide-pruning-grid">
+              <article class="guide-pruning-card guide-pruning-layer">
+                <span class="guide-method-label">WHOLE BLOCK</span><h4>Layer bypass</h4>
+                <p>Layer 1's effective output becomes its input. Attention and MLP updates from that block are discarded, while later blocks still run.</p>
+                <p><strong>In the diagram:</strong> the bypassed block is transparent with an orange dashed contour. On later layers, its orange 3D background card remains visible and can take you back to layer 1.</p>
+              </article>
+              <article class="guide-pruning-card guide-pruning-head">
+                <span class="guide-method-label">ONE HEAD PER LAYER</span><h4>Head masking</h4>
+                <p>Head 1's output is zeroed in every block, before the heads' concatenated output is projected. The other 11 head outputs in each block are left unmasked.</p>
+                <p><strong>In the diagram:</strong> the masked head can retain a normal attention map, but the values it contributes to the next stage are zero. This is one masked head <em>per layer</em>, not one head in the whole model.</p>
+              </article>
+              <article class="guide-pruning-card guide-pruning-weight">
+                <span class="guide-method-label">SMALL MLP PARAMETERS</span><h4>Magnitude pruning</h4>
+                <p>Mask the smallest-magnitude parameters in each targeted MLP tensor, aiming for 20%. The working hypothesis is that small values may be less important—but small magnitude does not guarantee a parameter is dispensable.</p>
+                <p><strong>In the diagram:</strong> coral tiles identify masked positions. Threshold ties can make the achieved fraction differ slightly from the target.</p>
+              </article>
+              <article class="guide-pruning-card guide-pruning-weight">
+                <span class="guide-method-label">RANDOM MLP PARAMETERS</span><h4>Random pruning</h4>
+                <p>Mask MLP parameters at random with a target rate of 20%, using a fixed seed for repeatability. This provides a comparison that does not select parameters by magnitude.</p>
+                <p><strong>In the diagram:</strong> different positions are masked from magnitude pruning. The actual fraction can vary because positions are sampled randomly.</p>
+              </article>
+            </div>
+            <aside class="guide-caution" aria-label="Pruning limitations">
+              <h4>Masking is not automatically compression or acceleration</h4>
+              <p>This lab's zeroed parameters still occupy dense tensors. Bypassed blocks and masked heads are still computed internally before their contributions are discarded or zeroed. These experiments therefore <strong>do not establish a smaller checkpoint or a speed or memory improvement</strong>. Physical removal, suitable sparse kernels, and sometimes recovery training are separate steps.</p>
+              <p>The 20% settings apply to the targeted <strong>MLP parameters</strong>, not 20% of the entire model. A change in next-token probabilities or one completion is also not a reliable measure of general model quality; that requires representative tasks and careful evaluation.</p>
+            </aside>
+          </section>
+
+          <section id="guide-explore" class="guide-chapter" aria-labelledby="guide-explore-title">
+            <span class="guide-chapter-number">09 / CONNECT IT TO THE DIAGRAM</span>
+            <h3 id="guide-explore-title">Try it in this visualization</h3>
+            <ol class="guide-steps">
+              <li><strong>Compare Original and Pruned.</strong> Choose a preset, hold the layer and head fixed, and toggle the model state. The input sentence stays the same.</li>
+              <li><strong>Inspect the bypass.</strong> Select Layer bypass and the Pruned view. Layer 1 has an orange outline; moving to a later layer keeps a clickable 3D reminder of the bypassed layer in the background.</li>
+              <li><strong>Compare heads 1 and 2.</strong> Choose Head masking. Head 1's output is zero, while head 2 remains unmasked. The attention map alone does not tell you whether a head contributes.</li>
+              <li><strong>Open the computations.</strong> Expand Embedding, the attention matrix, or Probabilities. Use concept and operation links for measured details below the diagram.</li>
+              <li><strong>Follow an input position.</strong> Pick a token below the diagram to inspect its next-token candidates. Scroll over Layer or Head, or use the small arrow buttons, to move through the model.</li>
+            </ol>
+            <p class="guide-observe"><strong>What this page does not do:</strong> there is no editable prompt or temperature/top-k/top-p control. These are saved forward-pass measurements for one fixed prompt, not a live trace of every generated token. GPT-2 can generate fluent but incorrect or outdated claims.</p>
+            <a class="guide-return" href="#gpt2-view">Return to the visualization ↑</a>
+          </section>
+          <p class="guide-sources">Explanations paraphrased and adapted from <a href="https://poloclub.github.io/transformer-explainer/" target="_blank" rel="noopener noreferrer">Polo Club's Transformer Explainer</a>, with lab-specific pruning notes. See also <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener noreferrer">Attention Is All You Need (2017)</a>.</p>
+        </div>
+      </div>
+    </section>
     <footer class="walkthrough-footer"><p>Interface adapted from <a href="https://github.com/poloclub/transformer-explainer" target="_blank" rel="noopener noreferrer">Polo Club’s Transformer Explainer</a> · <a href="/static/third-party/transformer-explainer-LICENSE.txt">MIT license</a>. Local measurements; no external model or analytics.</p><details><summary>About these measurements</summary><p>This is a saved forward pass on the fixed input, not every generated token. Colored vector tiles show eight sampled dimensions. Attention and predictions use actual model data; connecting routes and MLP expansion shapes explain architecture, not measured signal strength. Presets never change the input. Raw probability bars precede repetition controls. GPT-2 may produce outdated or incorrect facts; it is not a current population reference. Native context: 1,024 tokens; Qwen experiments use 32,768. No additional output-token cap.</p></details></footer>
   </main>
 </body>

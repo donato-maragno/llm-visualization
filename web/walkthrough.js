@@ -10,7 +10,7 @@ async function walkthroughApi(path,data){
   return response.json();
 }
 function renderPresetCards(){
-  const labels={layers:"Layer bypass",heads:"Head masking",magnitude:"Magnitude · 20%",random:"Random · 20%"};
+  const labels={layers:"Layer bypass",heads:"Head masking · 1",magnitude:"Magnitude · 20%",random:"Random · 20%"};
   byId("walkthrough-presets").innerHTML=walkthroughState.config.presets.map((preset,i)=>`<button class="preset-card" type="button" data-preset="${i}" aria-pressed="${walkthroughState.variant===i}" title="${escapeText(preset.title)}">${labels[preset.technique]}</button>`).join("");
 }
 function walkthroughSelect(question,variant){walkthroughState.variant=variant;renderPresetCards();renderWalkthroughPair();}

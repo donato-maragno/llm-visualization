@@ -85,6 +85,7 @@ def test_pipeline_shows_actual_mask_effects_and_restores(runtime, technique, str
             for layer in pruned["layers"]:
                 assert layer["masked_heads"] == [0]
                 assert not torch.count_nonzero(torch.tensor(layer["head_output"][0]))
+                assert torch.count_nonzero(torch.tensor(layer["head_output"][1]))
                 assert torch.count_nonzero(torch.tensor(layer["attention"][0]))
         elif technique == "layers":
             assert pruned["layers"][-1]["bypassed"]

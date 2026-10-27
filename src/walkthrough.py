@@ -1,6 +1,6 @@
 """Server-owned, immutable GPT-2 teaching example and pruning presets."""
 
-WALKTHROUGH_VERSION = "population-country-first-layer-v3"
+WALKTHROUGH_VERSION = "population-country-first-layer-one-head-v4"
 WALKTHROUGH_SENTENCE = "the most pupulated country in the world is:"
 WALKTHROUGH_SEED = 42
 WALKTHROUGH_PRESETS = (
@@ -11,9 +11,9 @@ WALKTHROUGH_PRESETS = (
         "inspect": "Select layer 1 and compare its block input and effective output. They become identical on the pruned side. On later layers, the orange dashed 3D card keeps the bypassed first layer visible in the background.",
     },
     {
-        "id": "heads", "title": "Mask three attention heads", "technique": "heads", "strength": 3,
+        "id": "heads", "title": "Mask one attention head per layer", "technique": "heads", "strength": 1,
         "inspection_layer": 0, "inspection_head": 0,
-        "explanation": "The first three of twelve heads in every layer are zeroed before the output projection. Their attention patterns still exist, but those heads no longer contribute to the residual stream.",
+        "explanation": "The first of twelve heads in every layer is zeroed before the output projection. Its attention pattern still exists, but that head no longer contributes to the residual stream. The other eleven heads remain active.",
         "inspect": "Inspect head 1's contribution in the computation step: it is zero in the pruned model, even when its attention matrix looks unchanged.",
     },
     {

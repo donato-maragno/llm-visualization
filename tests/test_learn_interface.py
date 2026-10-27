@@ -1,6 +1,7 @@
 """The simplified Learn renderer is isolated from the Qwen experiment UI."""
 
 from pathlib import Path
+import re
 
 from fastapi.testclient import TestClient
 
@@ -74,3 +75,37 @@ def test_upstream_visualization_is_local_and_isolated(tmp_path):
     assert "style-src 'self';" in outer
     assert "frame-ancestors 'none'" in outer
     assert 'unsafe-inline' not in outer
+
+
+def test_learning_guide_follows_visualization_and_links_to_its_chapters(tmp_path):
+    client = TestClient(create_app(ExperimentService(tmp_path)))
+    page = client.get('/').text
+    assert page.index('id="gpt2-view"') < page.index('id="learn-guide"') < page.index('<footer')
+    chapters = ['transformer', 'embedding', 'blocks', 'attention', 'mlp', 'probabilities', 'supporting', 'pruning', 'explore']
+    for chapter in chapters:
+        assert f'id="guide-{chapter}"' in page
+        assert f'href="#guide-{chapter}"' in page
+        assert f'aria-labelledby="guide-{chapter}-title"' in page
+    ids = set(re.findall(r'\bid="([^"]+)"', page))
+    anchors = set(re.findall(r'href="#([^"]+)"', page))
+    assert anchors <= ids
+    assert '/static/learn-guide.css' in page
+    assert client.get('/static/learn-guide.css').status_code == 200
+    assert 'id="learn-guide"' not in client.get('/experiments').text
+    assert '<input' not in page and '<textarea' not in page
+
+
+def test_learning_guide_explains_actual_controls_and_pruning_limits(tmp_path):
+    client = TestClient(create_app(ExperimentService(tmp_path)))
+    page = client.get('/').text
+    assert '50,257' in page and '3,072' in page and '768' in page
+    assert 'head 1 is masked in every layer' in page
+    assert 'Heads 2–12 are not masked' in page
+    assert 'activations or attention weights' in page
+    assert 'does not permanently erase' in page
+    assert 'not raw logits' in page
+    assert 'not controls on this page' in page
+    assert 'do not establish a smaller checkpoint' in page
+    assert 'without rescaling them to sum to 100%' in page
+    assert 'no editable prompt or temperature/top-k/top-p control' in page
+    assert 'Explanations paraphrased and adapted from' in page

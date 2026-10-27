@@ -26,6 +26,15 @@ consistent; the lesson version invalidates old last-layer cached comparisons
 without modifying those saved results. Validation: 147 tests passed, plus a
 live GPT-2/browser check of first-layer identity bypass and later-layer context.
 
+The Learn head-masking preset now zeros just head 1 in each layer; the other
+eleven are unmasked. A versioned prepared example prevents older three-head
+comparisons from being relabeled. A static nine-chapter guide follows the
+visualization, with paraphrased architecture explanations, all four pruning
+methods, inference/training distinctions, and accurate descriptions of this
+lab's controls. General sampling concepts are not presented as enabled controls.
+Validation: 151 tests passed, including guide anchors/mobile layout and an
+actual GPT-2 check of zeroed head-1 outputs and nonzero head-2 outputs.
+
 The older review notes and validation counts below describe previous iterations.
 
 ## Current coding-only workflow

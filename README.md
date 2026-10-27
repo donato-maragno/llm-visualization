@@ -56,6 +56,13 @@ Use the menu tabs:
 - **Qwen experiments:** http://127.0.0.1:8000/experiments — editable coding problems,
   pruning settings, generated solutions and actual test comparisons.
 
+Below the Learn visualization is a chapter-linked guide to Transformers,
+tokenization and embeddings, blocks, Q/K/V and attention, the MLP, output
+probabilities, normalization/residuals/dropout, and all four pruning methods.
+It paraphrases the Transformer Explainer material and explains exactly which
+controls and measurements this local lab provides. Sampling concepts are
+background reading, not additional prompt/temperature/top-k/top-p controls.
+
 The model downloads on first use, so the first experiment can take longer.
 Later runs reuse the local model cache. Read the execution safety section below
 before consenting to run generated Python.
@@ -102,8 +109,8 @@ The four predefined pruning examples use exactly that same sentence:
 
 1. **Bypass the first block:** discard layer 1's contribution while preserving
    its input. This changes the actual model forward pass, not just its label.
-2. **Mask three attention heads:** zero the first three heads' contributions
-   in every layer before output projection.
+2. **Mask one attention head per layer:** zero head 1's contribution in every
+   layer before output projection, leaving the other eleven heads unmasked.
 3. **Magnitude pruning:** zero 20% of the smallest-magnitude parameters in each
    targeted MLP tensor.
 4. **Random pruning:** zero about 20% of MLP parameters using seed 42.
@@ -146,8 +153,9 @@ inspecting a later layer, a small 3D layer-context card keeps layer 1 visible in
 the background with the same orange dashed outline. Click that card to return
 to layer 1. This layer-context card is separate from the attention-head stack.
 The Original view never shows an applied bypass. The prepared-example version
-has changed, so older last-layer snapshots are retained but not reused as this
-first-layer lesson. The updated comparisons are prepared once automatically.
+has changed, so older last-layer or three-head snapshots are retained but not
+reused as the first-layer/one-head lesson. The updated comparisons are prepared
+once automatically.
 The upstream decorative random vector textures have been replaced with measured
 samples and shared original/pruned color scales. Unrecorded intermediate MLP
 vectors are architectural placeholders, not invented activations. The expanded
