@@ -1,0 +1,4 @@
+web/transformer/** linguist-generated=true
+# Minified dependencies contain intentional literal whitespace inside JS strings.
+web/transformer/explainer.js whitespace=-blank-at-eol
+frontend/package-lock.json linguist-generated=true

@@ -25,3 +25,7 @@ models/
 .cache/
 *.log
 run_all_output.txt
+
+# Frontend build dependencies (compiled web assets are tracked)
+node_modules/
+frontend/.vite/

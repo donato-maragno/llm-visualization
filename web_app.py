@@ -43,7 +43,14 @@ def create_app(service=None):
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        # Upstream Svelte/D3 uses dynamic style attributes for layout/animation.
+        # Permit those only in its isolated, same-origin visualization document;
+        # the outer app retains its strict policy and cannot be framed.
+        visualizer = request.url.path == "/static/transformer/index.html"
+        styles = "'self' 'unsafe-inline'" if visualizer else "'self'"
+        ancestors = "'self'" if visualizer else "'none'"
+        fonts = "'self' data:" if visualizer else "'self'"
+        response.headers["Content-Security-Policy"] = f"default-src 'self'; script-src 'self'; style-src {styles}; img-src 'self' data:; font-src {fonts}; connect-src 'self'; frame-ancestors {ancestors}; base-uri 'self'"
         return response
 
     @app.get("/")

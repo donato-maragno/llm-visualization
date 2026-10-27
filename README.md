@@ -13,7 +13,9 @@ original/pruned Python solutions on real tested questions.
 - An internet connection to install dependencies and download the model on first use.
 - A CUDA-capable GPU is optional; the app can use the CPU, but generation is slower.
 
-No Node.js, npm, Docker, or API key is required.
+No Node.js, npm, Docker, or API key is required to run the included interface.
+Precompiled visualization assets are checked in. Node/npm are only needed if
+you modify and rebuild the frontend source in `frontend/`.
 
 ### 1. First-time setup
 
@@ -105,21 +107,30 @@ The four predefined pruning examples use exactly that same sentence:
    targeted MLP tensor.
 4. **Random pruning:** zero about 20% of MLP parameters using seed 42.
 
-The Learn interface follows the continuous, left-to-right layout of
+The Learn interface reuses the actual Svelte/D3 visualization components from
 [Polo Club's Transformer Explainer](https://github.com/poloclub/transformer-explainer):
 **embedding → Q/K/V → stacked self-attention → MLP → remaining blocks → softmax**.
-It is adapted to our local cached measurements, not a second ONNX/browser model.
-The upstream MIT license and attribution are included in `web/third-party/`.
+This replaces the earlier hand-drawn approximation. It retains the upstream
+stacked head cards, curved flow ribbons, residual operations, and expandable
+embedding, attention and probability views, with pruning overlays added.
+
+The upstream components receive this lab's local cached measurements, not a
+second ONNX/browser model or the upstream cached examples. Original/pruned
+measurements always come from the same Python model and fixed input. The page
+does not contact the upstream website, CDNs, analytics, or external model APIs.
+The MIT license and attribution are included in `frontend/LICENSE.upstream`
+and `web/third-party/`; the pinned commit and changes are in `frontend/UPSTREAM.md`.
 
 Select a compact pruning tab and toggle **Original / Pruned** to compare the
 same layer and head in one diagram. Pruned heads have cut output routes,
 bypassed blocks have a separate amber route, and the MLP weight sample marks
 actual masked positions. Scroll up/down over **Layer** or **Head** to step through
 them, or use their small arrow buttons. Previous/next-layer arrows above Q/K/V,
-self-attention, MLP, and other blocks keep the whole diagram synchronized.
+self-attention, and MLP keep the whole diagram synchronized.
 Navigation stops at the first/last item and preserves horizontal panning.
-Click a column heading, token, or attention cell to
-expand measured details below the diagram; they are collapsed by default.
+Click embedding/probability headings or the attention matrix to expand the
+upstream visualization in place. Concept/operation links open measured details
+below it. Select an input token below the diagram to inspect its prediction.
 Original/pruned text previews stay below the network; full continuations are
 optional expandable details. Layer/head/token selection only changes inspection,
 never the fixed input or applied presets. Small screens can pan the diagram
@@ -129,6 +140,31 @@ The embeddings remain identical because these presets do not prune them.
 Masked heads can retain the same attention matrix while their actual output
 contribution is zero. Bypassed blocks still compute internally, but their
 effective output equals their input. These distinctions are explicitly labeled.
+The upstream decorative random vector textures have been replaced with measured
+samples and shared original/pruned color scales. Unrecorded intermediate MLP
+vectors are architectural placeholders, not invented activations. The expanded
+probability view explicitly shows `log p`, not unavailable raw logits; displayed
+probabilities retain their full-vocabulary values without top-k renormalization.
+
+The upstream visualization is served in a local same-origin frame so its
+styles do not affect the experiments page. Only that embedded document permits
+the dynamic style attributes needed by Svelte/D3; the outer app retains its
+strict content security policy. No inline or remote scripts are allowed.
+
+### Rebuilding the visualization (frontend development only)
+
+With Node.js 20.19+ or 22.12+:
+
+```powershell
+cd frontend
+npm ci
+npm run build
+cd ..
+```
+
+Commit both `frontend/` source changes and rebuilt `web/transformer/` assets.
+The Python launcher remains unchanged. Restart the local Python server after
+updating server code, then refresh the browser.
 
 Measured comparisons appear after generation, not as a live network animation.
 Snapshots describe the fixed input sentence, not every token of the growing

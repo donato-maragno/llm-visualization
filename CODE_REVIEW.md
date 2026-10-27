@@ -1,5 +1,24 @@
 # Code review and interface implementation
 
+## Upstream visualization integration
+
+The Learn page now embeds a local build of the actual Transformer Explainer
+Svelte/D3 components, with measured pruning overlays and no application logo.
+The Python pruning backend and separate Qwen page are unchanged. Source,
+pinned upstream commit, MIT notice and rebuild instructions are in `frontend/`.
+The compiled assets are included so Python users do not need Node/npm.
+
+The upstream ONNX runtime, cached examples and analytics are not included.
+Decorative random vector textures are replaced by actual measured samples.
+The outer page retains its strict CSP; only the same-origin visualization
+document allows dynamic style attributes and local/data fonts needed by the
+upstream libraries. Script execution remains restricted to local assets.
+Browser regression tests cover real upstream components, original/pruned
+data, all four pruning presets, navigation, keyboard interaction, expansion
+overflow, frame-origin validation, mobile panning, and absence of script/CSP errors.
+
+The older review notes and validation counts below describe previous iterations.
+
 ## Current coding-only workflow
 
 The app and `run_all.py` now use Python LeetCode-style problems and
@@ -123,6 +142,6 @@ deserialized or replaced as part of the review.
   verify exact restoration for all four techniques. Model-specific input
   bounds and use of unpruned Qwen (not GPT-2) for local judging are tested.
 
-The web server has no Node build step, CDN dependencies, remote fonts, or
+The Python web server needs no Node build step, CDN dependencies, remote fonts, or
 hard-coded keys. Results render as escaped/plain text (not model-provided
 HTML), and a restrictive content security policy is applied.

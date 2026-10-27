@@ -49,15 +49,28 @@ def test_upstream_attribution_and_mit_notice_are_packaged(tmp_path):
     assert 'THE SOFTWARE IS PROVIDED "AS IS"' in license_response.text
 
 
-def test_shared_branding_and_local_logo(tmp_path):
+def test_shared_branding_without_logo(tmp_path):
     client = TestClient(create_app(ExperimentService(tmp_path)))
     for path in ('/', '/experiments'):
         page = client.get(path).text
         assert 'LLM visualization' in page
         assert 'Pruning Lab' not in page
-        assert 'class="brand-logo"' in page
-        assert '<link rel="icon" href="/static/logo.svg"' in page
-    logo = client.get('/static/logo.svg')
-    assert logo.status_code == 200
-    assert logo.headers['content-type'].startswith('image/svg+xml')
-    assert '<circle' in logo.text
+        assert 'brand-logo' not in page
+        assert 'logo.svg' not in page
+    assert client.get('/static/logo.svg').status_code == 404
+
+
+def test_upstream_visualization_is_local_and_isolated(tmp_path):
+    client = TestClient(create_app(ExperimentService(tmp_path)))
+    frame = client.get('/static/transformer/index.html')
+    assert frame.status_code == 200
+    assert '/static/transformer/explainer.js' in frame.text
+    assert '/static/transformer/explainer.css' in frame.text
+    policy = frame.headers['content-security-policy']
+    assert "script-src 'self'" in policy
+    assert "style-src 'self' 'unsafe-inline'" in policy
+    assert "frame-ancestors 'self'" in policy
+    outer = client.get('/').headers['content-security-policy']
+    assert "style-src 'self';" in outer
+    assert "frame-ancestors 'none'" in outer
+    assert 'unsafe-inline' not in outer

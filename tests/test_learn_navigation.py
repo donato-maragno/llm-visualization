@@ -5,6 +5,7 @@ The fixture data is synthetic and used only by these UI regression tests.
 """
 
 from copy import deepcopy
+import re
 from urllib.parse import urlsplit
 
 import pytest
@@ -34,13 +35,27 @@ def navigation_run():
     }
     pruned = deepcopy(pipeline)
     pruned["layers"][-1]["bypassed"] = True
+    heads = deepcopy(pipeline)
+    magnitude = deepcopy(pipeline)
+    random = deepcopy(pipeline)
+    for block in heads['layers']:
+        block['masked_heads'] = [0, 1, 2]
+        block['head_output'][:3] = [[[0, 0], [0, 0]]] * 3
+    for block in magnitude['layers'] + random['layers']:
+        block.update(masked_weights=4, total_mlp_weights=8)
+    topologies = [{"layers": [{"mlp_weights": [{"name": "mlp.c_fc.weight", "sample_values": [0.1] * 8,
+                                               "sample": [i % 2 == 0 and variant >= 2 for i in range(8)]}]} for _ in range(12)]}
+                  for variant in range(4)]
     return {
         "id": "navigation-test", "revision": 1, "status": "completed",
         "config": {"prompt": pipeline["prompt"]},
-        "walkthrough_presets": [{"technique": "layers", "title": "Bypass last block",
-                                 "inspection_layer": 11, "inspection_head": 0}],
+        "walkthrough_presets": [{"technique": technique, "title": technique,
+                                 "inspection_layer": 11 if technique == 'layers' else 0, "inspection_head": 0}
+                                for technique in ['layers', 'heads', 'magnitude', 'random']],
         "baselines": {"0": {"pipeline": pipeline, "text": "Original test output", "tokens": 3}},
-        "comparisons": {"0:0": {"answer": {"pipeline": pruned, "text": "Pruned test output", "tokens": 3}}},
+        "comparisons": {f"{i}:0": {"answer": {"pipeline": p, "text": "Pruned test output", "tokens": 3}}
+                        for i, p in enumerate([pruned, heads, magnitude, random])},
+        "baseline_view": topologies[0], "pruning_views": topologies,
     }
 
 
@@ -65,6 +80,7 @@ def learn_page(navigation_browser, tmp_path):
     page = navigation_browser.new_page(viewport={"width": 1440, "height": 1000})
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on('console', lambda message: errors.append(message.text) if message.type == 'error' else None)
 
     def serve(route):
         path = urlsplit(route.request.url).path
@@ -79,6 +95,8 @@ def learn_page(navigation_browser, tmp_path):
     page.goto("http://llm.test/")
     page.clock.install()
     page.evaluate("run => window.gpt2View.render(run, true)", navigation_run())
+    from playwright.sync_api import expect
+    expect(page.frame_locator('#learn-network-frame').locator('.multi-head')).to_be_visible()
     yield page
     page.close()
     assert not errors, errors
@@ -131,26 +149,27 @@ def test_scroll_layer_head_limits_and_trackpad(learn_page):
 def test_diagram_arrows_sync_details_and_keyboard(learn_page):
     page = learn_page
     layer = page.locator("#learn-layer")
-    assert page.locator('.learn-layer-arrow[aria-disabled="true"]').count() == 4
-    page.locator('[data-learn-open="attention"]').click()
-    page.locator('[data-learn-nav="attention--1"]').click()
-    assert layer.input_value() == "10"
-    assert page.locator(".learn-inspector h3").inner_text().endswith("layer 11, head 1")
-    assert page.locator('[data-learn-nav="attention--1"]').evaluate("node => node === document.activeElement")
-    page.locator('[data-learn-nav="mlp-1"]').focus()
+    from playwright.sync_api import expect
+    diagram = page.frame_locator('#learn-network-frame')
+    assert diagram.locator('.layer-navigation button:disabled').count() == 3
+    diagram.locator('[id="self-attention"]').click()
+    expect(page.locator('.learn-inspector h3')).to_contain_text('Masked self-attention')
+    diagram.locator('[data-nav="attention"]').get_by_role('button', name='Previous layer in Self Attention').click()
+    expect(layer).to_have_value("10")
+    expect(page.locator(".learn-inspector h3")).to_contain_text("layer 11, head 1")
+    diagram.get_by_role('button', name='Next layer in MLP').focus()
     page.keyboard.press("Enter")
-    assert layer.input_value() == "11"
-    assert layer.evaluate("node => node === document.activeElement")
-    page.locator('[data-learn-nav="qkv--1"]').focus()
+    expect(layer).to_have_value("11")
+    diagram.get_by_role('button', name='Previous layer in QKV').focus()
     page.keyboard.press("Space")
-    assert layer.input_value() == "10"
-    assert page.locator(".learn-layer-navigation > text").all_text_contents() == ["Layer 11 / 12"] * 4
+    expect(layer).to_have_value("10")
+    expect(diagram.locator('.layer-navigation').first).to_contain_text('Layer 11 / 12')
     page.locator('[data-model-state="pruned"]').click()
     assert layer.input_value() == "10"
-    page.locator('[data-learn-nav="blocks-1"]').click()
-    assert page.locator(".bypass-route").count() == 1
-    assert wheel(page, '[data-learn-nav="attention--1"]', -100)
-    assert layer.input_value() == "10"
+    diagram.get_by_role('button', name='Next layer in MLP').click()
+    expect(diagram.locator('.bypass-route')).to_have_count(2)
+    assert wheel(page, '#learn-layer', -100)
+    expect(layer).to_have_value("10")
     page.locator('[data-learn-nav="toolbar-head-1"]').click()
     assert page.locator("#learn-head").input_value() == "1"
     assert page.locator(".learn-inspector h3").inner_text().endswith("layer 11, head 2")
@@ -161,11 +180,66 @@ def test_mobile_navigation_keeps_pan_and_shared_brand(learn_page):
     page.set_viewport_size({"width": 390, "height": 844})
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
     assert "LLM visualization" in page.title()
-    assert page.locator(".brand-logo").evaluate("node => node.complete && node.naturalWidth > 0")
+    assert page.locator('.brand img,.brand svg').count() == 0
     canvas = page.locator(".learn-canvas-scroll")
-    canvas.evaluate("node => node.scrollLeft = 300")
+    canvas.evaluate("node => node.scrollLeft = 390")
     before = canvas.evaluate("node => node.scrollLeft")
-    page.locator('[data-learn-nav="attention--1"]').click()
+    page.frame_locator('#learn-network-frame').get_by_role('button', name='Previous layer in Self Attention').click()
     assert canvas.evaluate("node => node.scrollLeft") == before
-    assert page.locator("#learn-layer").input_value() == "10"
+    from playwright.sync_api import expect
+    expect(page.locator("#learn-layer")).to_have_value("10")
     assert page.locator("#gpt2-view [style]").count() == 0
+
+
+def test_upstream_components_use_measured_data_and_persist(learn_page):
+    from playwright.sync_api import expect
+    page = learn_page
+    diagram = page.frame_locator('#learn-network-frame')
+    expect(diagram.locator('.head-card')).to_have_count(12)
+    expect(diagram.locator('path.sankey-path').first).to_have_attribute('d', re.compile(r'.*M.*'))
+    sample = diagram.locator('.head-out canvas').first
+    expect(sample).to_have_attribute('data-sample', '[0.1,-0.2]')
+    diagram.locator('[data-click="embedding-step-title"]').click()
+    expect(diagram.locator('.embedding.expanded')).to_have_count(1)
+    page.locator('#learn-layer').select_option('5')
+    expect(diagram.locator('.embedding.expanded')).to_have_count(1)
+    expect(diagram.locator('[data-nav="attention"]')).to_contain_text('Layer 6 / 12')
+    # Only the real parent frame may drive the embedded visualization.
+    page.evaluate("window.postMessage({type:'llm-visualizer:navigate',axis:'layer',delta:1}, location.origin)")
+    assert page.locator('#learn-layer').input_value() == '5'
+
+
+def test_actual_pruning_overlays_and_raw_probabilities(learn_page):
+    from playwright.sync_api import expect
+    page = learn_page
+    diagram = page.frame_locator('#learn-network-frame')
+    expect(diagram.locator('text.label').first).to_have_text('40.00%')
+    page.locator('[data-model-state="pruned"]').click()
+    expect(diagram.locator('.bypass-route')).to_have_count(2)
+    bounds = diagram.locator('.bypass-route').first.evaluate('node => {const b=node.getBBox();return b.y+b.height;}')
+    assert bounds < int(page.locator('#learn-network-frame').get_attribute('height'))
+    page.evaluate('run => window.gpt2View.render(run, true, 0, 1)', navigation_run())
+    expect(diagram.locator('.head-out canvas').first).to_have_attribute('data-sample', '[0,0]')
+    expect(diagram.locator('.head-mask-label')).to_contain_text('output zeroed')
+    page.locator('[data-model-state="original"]').click()
+    expect(diagram.locator('.head-out canvas').first).to_have_attribute('data-sample', '[0.1,-0.2]')
+    for variant in [2, 3]:
+        page.evaluate('(args) => window.gpt2View.render(args.run, true, 0, args.variant)', {'run': navigation_run(), 'variant': variant})
+        expect(diagram.locator('.mlp-mask-label')).to_contain_text('4 / 8')
+        expect(diagram.locator('.weight-sample rect[fill="#d98e78"]')).to_have_count(4)
+
+
+def test_expanded_attention_is_reachable_without_document_overflow(learn_page):
+    from playwright.sync_api import expect
+    page = learn_page
+    diagram = page.frame_locator('#learn-network-frame')
+    diagram.locator('[data-click="attention-matrix"]').click()
+    page.clock.run_for(8000)
+    expect(diagram.locator('.attention-qk')).to_be_visible()
+    expect(diagram.locator('.attention-softmax .main')).to_have_css('opacity', '1')
+    required = diagram.locator('.head-content').evaluate('node => Math.ceil(node.getBoundingClientRect().right)')
+    assert int(page.locator('#learn-network-frame').get_attribute('width')) >= required
+    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+    diagram.get_by_role('button', name='Close expanded view ×').click()
+    page.clock.run_for(1000)
+    expect(diagram.locator('.attention.expanded')).to_have_count(0)
