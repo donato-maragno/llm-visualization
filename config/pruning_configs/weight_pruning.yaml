@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# Weight-Level Pruning Configuration
+#
+# Prunes individual scalar weights within parameter tensors.
+#
+# Strategy options:
+#   - "magnitude" : keep top (1-sparsity) weights by absolute value
+#   - "random"     : randomly zero out sparsity% of weights
+#   - "threshold"  : zero weights whose absolute value < threshold
+#   - "custom"     : supply a custom_mask_fn callable in Python
+# ---------------------------------------------------------------------------
+
+type: "weight"           # Pruner type
+mode: "masking"          # masking | structural
+
+strategy: "magnitude"    # magnitude | random | threshold | custom
+sparsity: 0.5            # Fraction of weights to prune (0.0 - 1.0)
+# threshold: 0.01        # Only used when strategy = "threshold"
+
+# Which parameters to prune? Patterns are recommended on GPUs with limited
+# VRAM; pruning every parameter also includes the large embedding tables.
+# Use glob-like patterns for fine-grained targeting, e.g.:
+#   target_modules:
+#     - "model.layers.*.mlp.*"       # only Qwen2 MLP weights
+#     - "model.layers.*.self_attn.*"  # only Qwen2 attention weights
+target_modules:
+  - "model.layers.*.mlp.*"  # MLP weights; lower peak VRAM than pruning all weights

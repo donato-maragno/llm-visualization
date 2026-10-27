@@ -1,0 +1,20 @@
+# ---------------------------------------------------------------------------
+# Module / Layer Pruning Configuration
+#
+# Prunes entire transformer layers.  Choose layers by 0-based index.
+# "mode" controls whether masking (hooks) or structural (removal)
+# is applied.
+# ---------------------------------------------------------------------------
+
+type: "module"           # Pruner type: module | head | weight
+mode: "masking"          # Pruning mode: masking | structural
+
+# List of dotted module names to prune.
+# Default Qwen2.5-1.5B: 28 layers, accessible as model.layers.0 .. model.layers.27
+target_modules:
+  - "model.layers.26"   # Prune the 27th layer
+  - "model.layers.27"   # Prune the 28th (last) layer
+
+# When mode="structural", what replaces each pruned module?
+# Options: "identity" (pass-through) | "zero" (output zeros)
+structural_replacement: "identity"

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f6f8">
+  <title>GPT-2 walkthrough — LLM visualization</title>
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/navigation.css">
+  <link rel="stylesheet" href="/static/gpt2.css">
+  <link rel="stylesheet" href="/static/walkthrough.css">
+  <script src="/static/learn-explainer.js" defer></script>
+  <script src="/static/walkthrough.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/" class="brand"><img class="brand-logo" src="/static/logo.svg" width="34" height="34" alt=""> LLM visualization <span class="tag">LOCAL</span></a>
+    <span class="hardware">GPT-2 · 124M parameters · one fixed example</span>
+  </header>
+  <nav class="page-menu" aria-label="Main pages">
+    <a href="/" aria-current="page"><small>01 / LEARN</small> GPT-2 walkthrough</a>
+    <a href="/experiments"><small>02 / EXPERIMENT</small> Qwen experiments</a>
+  </nav>
+  <main class="walkthrough-page">
+    <div class="learn-title"><h1>LLM visualization <span>· GPT-2 walkthrough</span></h1><span>GPT-2 / cached model measurements</span></div>
+    <blockquote id="fixed-sentence" class="walkthrough-sentence">the most pupulated country in the world is:</blockquote>
+    <div id="walkthrough-notice" class="notice" role="alert" hidden></div>
+    <section id="walkthrough-progress" class="panel progress-panel" hidden aria-live="polite"><div><span id="walkthrough-status" class="tag"></span><span id="walkthrough-stage"></span><span id="walkthrough-count"></span></div><progress id="walkthrough-progress-bar" max="5" value="0"></progress></section>
+    <section class="pruning-lessons" aria-label="Predefined pruning examples"><span>Pruning example</span><div id="walkthrough-presets" class="preset-grid" role="group" aria-label="Pruning presets"></div></section>
+    <section id="gpt2-view" data-mode="walkthrough" class="learn-explainer" aria-label="GPT-2 input to output transformer visualization"></section>
+    <footer class="walkthrough-footer"><p>Interface adapted from <a href="https://github.com/poloclub/transformer-explainer" target="_blank" rel="noopener noreferrer">Polo Club’s Transformer Explainer</a> · <a href="/static/third-party/transformer-explainer-LICENSE.txt">MIT license</a>. Local measurements; no external model or analytics.</p><details><summary>About these measurements</summary><p>This is a saved forward pass on the fixed input, not every generated token. Colored vector tiles show eight sampled dimensions. Attention and predictions use actual model data; connecting routes and MLP expansion shapes explain architecture, not measured signal strength. Presets never change the input. Raw probability bars precede repetition controls. GPT-2 may produce outdated or incorrect facts; it is not a current population reference. Native context: 1,024 tokens; Qwen experiments use 32,768. No additional output-token cap.</p></details></footer>
+  </main>
+</body>
+</html>

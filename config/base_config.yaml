@@ -1,0 +1,5 @@
+# ---------------------------------------------------------------------------
+# Baseline configuration – loads the model without any pruning.
+# ---------------------------------------------------------------------------
+model_name: "Qwen/Qwen2.5-Coder-1.5B-Instruct"  # Apache 2.0 coding model; FP16 on CUDA
+device: "auto"  # "auto" | "cpu" | "cuda" | "mps"

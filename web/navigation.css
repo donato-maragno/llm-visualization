@@ -1,0 +1,7 @@
+.brand-logo{display:block;flex-shrink:0;width:34px;height:34px}
+.page-menu{display:flex;gap:10px;padding:12px 36px;border-bottom:1px solid var(--line);background:#fff}
+.page-menu a{display:flex;align-items:center;gap:9px;padding:10px 16px;border:1px solid transparent;border-radius:9px;font-size:12px;font-weight:550;color:var(--muted)}
+.page-menu a small{font-size:9px;letter-spacing:1px;opacity:.7}
+.page-menu a:hover{background:#f3f6f9}
+.page-menu a[aria-current=page]{background:#e9f4ee;color:#28664e;border-color:#d0e5d9}
+@media(max-width:720px){.page-menu{padding:10px 16px;gap:6px}.page-menu a{flex:1;justify-content:center;padding:10px 7px;font-size:11px}.page-menu a small{display:none}}

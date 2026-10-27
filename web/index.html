@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f6f8">
+  <title>Qwen experiments — LLM visualization</title>
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/gpt2.css">
+  <link rel="stylesheet" href="/static/coding.css">
+  <link rel="stylesheet" href="/static/navigation.css">
+  <script src="/static/gpt2.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/" class="brand"><img class="brand-logo" src="/static/logo.svg" width="34" height="34" alt=""> LLM visualization <span class="tag">LOCAL</span></a>
+    <span id="hardware" class="hardware">Connecting to your server…</span>
+  </header>
+  <nav class="page-menu" aria-label="Main pages">
+    <a href="/"><small>01 / LEARN</small> GPT-2 walkthrough</a>
+    <a href="/experiments" aria-current="page"><small>02 / EXPERIMENT</small> Qwen experiments</a>
+  </nav>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="eyebrow">QWEN EXPERIMENTS / NEXT RUN</div>
+      <h1>Real questions.<br> Same outcome?</h1>
+      <p id="task-intro" class="muted">Python coding problems. Original vs. pruned solutions. Compared by executing identical tests—not by a judge.</p>
+      <form id="run-form">
+        <fieldset id="settings">
+          <section class="setting-section">
+            <label for="model">MODEL <span>Qwen only · coding-specialized</span></label>
+            <select id="model"><option value="Qwen/Qwen2.5-Coder-1.5B-Instruct">Qwen2.5-Coder · 1.5B Instruct</option></select>
+            <p id="model-note" class="caption">32,768-token context. No user-set output token cap. The separate GPT-2 page is for the fixed visual walkthrough.</p>
+          </section>
+          <section id="coding-topic-setting" class="setting-section">
+            <label for="topic">01 <span>Python problem set</span></label>
+            <select id="topic"><option value="all">Mixed algorithms · 10 problems</option><option value="arrays">Arrays</option><option value="strings">Strings</option><option value="hashing">Hashing</option><option value="stack">Stack</option><option value="dynamic-programming">Dynamic programming</option><option value="search">Binary search</option></select>
+            <button type="button" id="templates" class="button subtle full">Load coding problems <span>↗</span></button>
+          </section>
+          <section class="setting-section">
+            <div class="section-line"><label>02 <span>Pruning variants</span></label><button type="button" id="add-variant" class="text-button">+ Add</button></div>
+            <div id="variants"></div>
+            <p class="caption">Layers: bypass the last N. Heads: mask the first N in every layer. Weight sparsity: MLP only.</p>
+          </section>
+          <section class="setting-section">
+            <div id="coding-execution">
+              <label>03 <span>Binary execution comparison</span></label>
+              <p class="caption"><b>1</b> = identical return values on every test.<br><b>0</b> = different outputs or execution failure.<br>Correctness against expected answers is shown separately.</p>
+              <label class="consent"><input type="checkbox" id="execution-consent"> Allow generated Python to run in a restricted local child process. Imports are limited; execution has a 5 s / 256 MiB budget. This is not a full security sandbox.</label>
+            </div>
+            <details class="advanced"><summary>Generation settings</summary>
+              <div class="two-fields">
+                <label for="seed">Mask seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
+              </div>
+              <p id="generation-note" class="caption">No user-set generation token cap. Generation stops at EOS, cancellation, or the model’s finite context limit. Greedy decoding; seed controls random masks.</p>
+            </details>
+          </section>
+        </fieldset>
+        <button type="submit" id="run" class="button primary full">Run comparison <span>→</span></button>
+        <button type="button" id="cancel" class="button danger full" hidden>Stop & restore original weights</button>
+        <p id="run-estimate" class="caption centered"></p>
+      </form>
+      <div class="sidebar-footer"><span class="status-dot"></span> <span id="model-footer">Qwen2.5-Coder · 1.5B</span><p>No judge or paid API calls. No permanent weight changes.<br>Masking does not guarantee memory or speed gains.</p></div>
+    </aside>
+
+    <div class="workspace">
+      <div id="notice" class="notice" role="alert" hidden></div>
+      <section id="coding-problems" class="question-section panel">
+        <div class="panel-heading">
+          <div><div class="eyebrow">PYTHON / LEETCODE-STYLE</div><h2>Coding problems <span id="question-count" class="count">10</span></h2></div>
+          <button type="button" id="generate-question" class="button secondary">+ New coding problem</button>
+        </div>
+        <p class="muted compact">Every problem has a solve(...) contract and explicit tests. New problems come from a vetted local catalog; no LLM invents the expected outputs. Expand a problem to edit its statement and tests as JSON.</p>
+        <details id="bank-details"><summary id="bank-summary">Review problems & tests</summary><div id="question-bank"></div></details>
+        <details class="advanced"><summary>Add a custom Python problem with tests</summary><form id="custom-form" class="custom-question"><textarea id="custom-question" rows="6" aria-label="Custom problem JSON" placeholder='{"id":"double","title":"Double a number","category":"arrays","description":"Implement solve(n). Return twice n.","tests":[{"args":[3],"expected":6}],"normalize":"exact"}' required></textarea><button id="add-question" class="button secondary" type="submit">+ Add</button></form></details>
+      </section>
+
+      <section class="results-section">
+        <div class="results-heading">
+          <div><div class="eyebrow">OBSERVE THE DIFFERENCE</div><h2>Experiment results</h2></div>
+          <div class="result-actions"><label class="sr-only" for="history">Previous experiment</label><select id="history"><option value="">Previous experiments</option></select><button id="export" class="button secondary" type="button" disabled>Export JSON ↓</button></div>
+        </div>
+        <div id="progress-panel" class="panel progress-panel" hidden aria-live="polite"><div><span id="run-status" class="tag"></span><span id="stage"></span><span id="progress-label"></span></div><progress id="progress" max="1" value="0"></progress></div>
+        <section id="gpt2-view" class="panel gpt2-view" hidden aria-label="Selected tested question: original and pruned transformer comparison"></section>
+        <div id="empty" class="empty panel"><div class="empty-icon">↔</div><h3>Different code. Same result?</h3><p>Generate original and pruned Python solutions.<br>Run both on the same tests and compare their actual return values.</p><div class="empty-flow"><span>Original code</span><span>↔</span><span>Pruned code</span><span>→</span><span>0 or 1</span></div></div>
+        <div id="results" hidden>
+          <div id="run-meta" class="run-meta"></div>
+          <div id="summary-cards" class="summary-cards"></div>
+          <div class="view-tabs" role="tablist" aria-label="Result views"><button id="tab-overview" role="tab" aria-selected="true" aria-controls="overview">Overview</button><button id="tab-answers" role="tab" aria-selected="false" aria-controls="answers">Answer explorer</button></div>
+          <div id="overview" role="tabpanel" aria-labelledby="tab-overview"><div class="panel matrix-scroll"><table id="matrix"></table></div><p class="caption">Select a 0/1 score to inspect both programs and their test outputs. Matching outcomes are not proof of correctness: both programs may return the same wrong answer. Invalid code, errors and timeouts score 0.</p></div>
+          <div id="answers" role="tabpanel" aria-labelledby="tab-answers" hidden>
+            <div class="explorer-controls"><label>Question<select id="question-select"></select></label><label>Pruning variant<select id="variant-select"></select></label></div>
+            <h3 id="active-question" class="active-question"></h3>
+            <p id="problem-statement" class="muted"></p>
+            <div class="answer-grid"><article class="panel answer-card"><div class="answer-heading"><span class="eyebrow">ORIGINAL MODEL</span><span id="baseline-time" class="caption"></span></div><div id="baseline-answer" class="answer-text"></div></article><article class="panel answer-card"><div class="answer-heading"><span class="eyebrow" id="pruned-label">PRUNED MODEL</span><span id="pruned-time" class="caption"></span></div><div id="pruned-answer" class="answer-text"></div></article></div>
+            <article class="panel judgment"><div class="judge-score"><span class="eyebrow">SAME OUTCOME?</span><strong id="outcome-score">—</strong><span class="caption">Python execution · 0 / 1</span></div><div><h3 id="outcome-verdict">Waiting for execution</h3><p id="outcome-reason"></p><p id="correctness"></p></div></article>
+            <div class="panel matrix-scroll test-results"><table id="case-results"></table></div>
+          </div>
+        </div>
+      </section>
+      <footer class="page-footer"><span id="footer-mode">PRUNING LAB / LOCAL PYTHON WORKSPACE</span><span id="footer-metric">1 identical outcomes · 0 different outcomes / execution failure</span></footer>
+    </div>
+  </main>
+</body>
+</html>

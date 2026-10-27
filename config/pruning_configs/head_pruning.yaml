@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+# Attention-Head Pruning Configuration
+#
+# Prunes individual attention heads within transformer layers.
+#
+# head_indices can be specified in two ways:
+#
+#   1. GLOBAL – same head indices for every layer:
+#      head_indices: [0, 1, 2]        # prune heads 0,1,2 in ALL layers
+#      head_indices: "even"            # prune all even-indexed heads
+#      head_indices: "0:6"             # prune heads 0-5 in ALL layers
+#
+#   2. PER-LAYER – different indices per layer:
+#      head_indices:
+#        0: [0, 1, 2]
+#        1: [9, 10, 11]
+#        5: "even"
+#        ...
+# ---------------------------------------------------------------------------
+
+type: "head"             # Pruner type
+mode: "masking"          # masking | structural
+
+# Prune heads 0-5 (first half) in every layer
+head_indices: "0:6"
+
+# When mode="structural", also zero the output projection rows?
+# This ensures pruned heads don't leak through c_proj / out_proj.
+zero_output_projection: true

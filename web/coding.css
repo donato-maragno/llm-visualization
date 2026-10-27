@@ -1,0 +1,10 @@
+.problem-detail { flex: 1; min-width: 0; margin-top: 9px; }
+.problem-detail summary { line-height: 1.7; }
+.problem-detail summary small { font-size: 10px; color: var(--muted); margin-left: 8px; font-weight: 400; }
+.problem-detail p { font-size: 12px; color: var(--muted); margin: 12px 0; }
+.problem-detail textarea, #custom-question { font: 11px/1.65 ui-monospace, Consolas, monospace; }
+.answer-text { font: 12px/1.8 ui-monospace, Consolas, monospace; }
+.test-results { margin-top: 18px; }
+.test-results td { max-width: 240px; overflow-wrap: anywhere; font-size: 11px; }
+.test-results th:first-child, .test-results td:first-child { min-width: 140px; }
+#correctness { margin-top: 12px; }
