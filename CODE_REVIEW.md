@@ -17,6 +17,15 @@ Browser regression tests cover real upstream components, original/pruned
 data, all four pruning presets, navigation, keyboard interaction, expansion
 overflow, frame-origin validation, mobile panning, and absence of script/CSP errors.
 
+The fixed GPT-2 bypass lesson now targets the first transformer layer in the
+actual forward pass, with a transparent orange dashed contour. On later layers,
+a separate 3D layer-context card retains the outlined first layer behind the
+selected layer and links back to it. Qwen's default last-N-layer experiments
+remain unchanged. Shared layer selection keeps runtime targets and telemetry
+consistent; the lesson version invalidates old last-layer cached comparisons
+without modifying those saved results. Validation: 147 tests passed, plus a
+live GPT-2/browser check of first-layer identity bypass and later-layer context.
+
 The older review notes and validation counts below describe previous iterations.
 
 ## Current coding-only workflow

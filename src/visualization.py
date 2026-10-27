@@ -4,6 +4,8 @@ This describes topology and mask positions, not activations or measured speedups
 Never serialize full weight tensors to the browser.
 """
 
+from .pruning_targets import bypassed_layer_indices
+
 
 def gpt2_snapshot(model, variant, pruner):
     if model.config.model_type != "gpt2":
@@ -13,6 +15,7 @@ def gpt2_snapshot(model, variant, pruner):
     saved = getattr(pruner, "_saved", {})
     technique = variant.technique if variant is not None else "none"
     strength = variant.strength if variant is not None else 0
+    bypassed = bypassed_layer_indices(variant, count)
     layers = []
     for index, block in enumerate(model.transformer.h):
         prefix = f"transformer.h.{index}"
@@ -34,7 +37,7 @@ def gpt2_snapshot(model, variant, pruner):
         head_strengths = projection.float().abs().reshape(heads, -1).mean(dim=1).cpu().tolist()
         layers.append({
             "index": index, "name": prefix,
-            "bypassed": technique == "layers" and index >= count - strength,
+            "bypassed": index in bypassed,
             "masked_heads": list(range(strength)) if technique == "heads" else [],
             "head_strengths": head_strengths,
             "mlp_weights": weights,

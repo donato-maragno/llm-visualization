@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 import torch
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, model_serializer
 
 from .judge_eval import get_model_answer
 from .coding_problems import Problem
@@ -24,12 +24,28 @@ from .visualization import gpt2_snapshot
 from .text_pipeline import capture_pipeline, prompt_inputs
 from .question_pipeline import capture_question_pipeline
 from .walkthrough import WALKTHROUGH_VERSION, WALKTHROUGH_PRESETS
+from .pruning_targets import bypassed_layer_indices
 
 
 class Variant(BaseModel):
     model_config = ConfigDict(extra="forbid")
     technique: Literal["layers", "heads", "magnitude", "random"]
     strength: int = Field(ge=1, le=80)
+    layer_position: Literal["first", "last"] = "last"
+
+    @model_serializer(mode="wrap")
+    def serialize(self, handler):
+        data = handler(self)
+        # Preserve existing last-layer experiment configs and saved records.
+        if self.layer_position == "last":
+            data.pop("layer_position", None)
+        return data
+
+    @model_validator(mode="after")
+    def valid_layer_position(self):
+        if self.layer_position == "first" and self.technique != "layers":
+            raise ValueError("Layer position applies only to layer bypass.")
+        return self
 
     @field_validator("strength")
     @classmethod
@@ -42,7 +58,7 @@ class Variant(BaseModel):
     @property
     def label(self):
         if self.technique == "layers":
-            return f"Bypass last {self.strength} layer(s)"
+            return f"Bypass {self.layer_position} {self.strength} layer(s)"
         if self.technique == "heads":
             return f"Mask {self.strength}/12 heads per layer"
         return f"MLP {self.technique} · {self.strength}%"
@@ -156,9 +172,8 @@ class Runtime:
         metadata = get_model_metadata(self.model)
         prefix = "transformer.h" if metadata["model_type"] == "gpt2" else "model.layers"
         if variant.technique == "layers":
-            count = min(variant.strength, metadata["num_layers"] - 1)
             pruner = ModulePruner(self.model, {
-                "target_modules": [f"{prefix}.{i}" for i in range(metadata["num_layers"] - count, metadata["num_layers"])],
+                "target_modules": [f"{prefix}.{i}" for i in bypassed_layer_indices(variant, metadata["num_layers"])],
                 "masking_replacement": "identity",
             })
         elif variant.technique == "heads":

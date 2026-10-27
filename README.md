@@ -100,7 +100,8 @@ On a fresh installation, they are prepared once automatically; simultaneous
 visits share the same preparation instead of starting duplicate GPU tasks.
 The four predefined pruning examples use exactly that same sentence:
 
-1. **Bypass the last block:** discard the last block's contribution.
+1. **Bypass the first block:** discard layer 1's contribution while preserving
+   its input. This changes the actual model forward pass, not just its label.
 2. **Mask three attention heads:** zero the first three heads' contributions
    in every layer before output projection.
 3. **Magnitude pruning:** zero 20% of the smallest-magnitude parameters in each
@@ -140,6 +141,13 @@ The embeddings remain identical because these presets do not prune them.
 Masked heads can retain the same attention matrix while their actual output
 contribution is zero. Bypassed blocks still compute internally, but their
 effective output equals their input. These distinctions are explicitly labeled.
+The bypassed first layer is transparent with an orange dashed contour. When
+inspecting a later layer, a small 3D layer-context card keeps layer 1 visible in
+the background with the same orange dashed outline. Click that card to return
+to layer 1. This layer-context card is separate from the attention-head stack.
+The Original view never shows an applied bypass. The prepared-example version
+has changed, so older last-layer snapshots are retained but not reused as this
+first-layer lesson. The updated comparisons are prepared once automatically.
 The upstream decorative random vector textures have been replaced with measured
 samples and shared original/pruned color scales. Unrecorded intermediate MLP
 vectors are architectural placeholders, not invented activations. The expanded
@@ -344,7 +352,8 @@ not installed on the current laptop and is not required by this local mode.
 
 ## Pruning and interface
 
-- Adjustable last-layer bypass, per-layer head masking, magnitude MLP pruning,
+- First-layer bypass in the fixed GPT-2 lesson; adjustable last-layer bypass in
+  the Qwen experiments page. Per-layer head masking, magnitude MLP pruning,
   and random MLP pruning. The seed controls random masks; decoding is greedy.
 - One cached model and one worker. Every variant is reverted in `finally`,
   including cancellation/failure. A model is discarded if restoration fails.

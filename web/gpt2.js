@@ -14,7 +14,7 @@ window.gpt2View = (() => {
     return `rgb(${[244,246,250].map((v,i)=>Math.round(v+(target[i]-v)*t)).join(",")})`;
   };
   const probabilityColor = value => `rgba(38,145,139,${.06+.94*Math.sqrt(Math.max(0,Math.min(1,value)))})`;
-  const name = v => v.technique==="layers"?`Bypass last ${v.strength} layer(s)`:v.technique==="heads"?`Mask ${v.strength} head(s) / layer`:`MLP ${v.technique} · ${v.strength}%`;
+  const name = v => v.technique==="layers"?`Bypass ${v.layer_position==="first"?"first":"last"} ${v.strength} layer(s)`:v.technique==="heads"?`Mask ${v.strength} head(s) / layer`:`MLP ${v.technique} · ${v.strength}%`;
   const root = () => $("gpt2-view");
   const isWalkthrough=()=>root().dataset.mode==="walkthrough";
   const heading = status => `<div class="panel-heading"><div><div class="eyebrow">${isWalkthrough()?"GPT-2 / FIXED SENTENCE WALKTHROUGH":"TESTED QUESTION / TRANSFORMER PIPELINE"}</div><h2>${isWalkthrough()?"One sentence. See inside the transformer.":"Same question. Two model states."}</h2></div><span id="viz-status" class="tag">${status}</span></div>`;

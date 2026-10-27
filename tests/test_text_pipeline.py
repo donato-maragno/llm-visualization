@@ -113,6 +113,28 @@ def test_capture_failure_removes_only_its_own_hooks(runtime, monkeypatch):
         assert runtime.model.config._attn_implementation == implementation
 
 
+def test_first_layer_bypass_changes_the_real_forward_pass(runtime):
+    original = capture_pipeline(runtime.model, runtime.tokenizer, "Data")
+    variant = Variant(technique="layers", strength=1, layer_position="first")
+    assert variant.model_dump() == {"technique": "layers", "strength": 1, "layer_position": "first"}
+    assert Variant(technique="layers", strength=1).model_dump() == {"technique": "layers", "strength": 1}
+    with runtime.pruned(variant, 42) as topology:
+        pruned = capture_pipeline(runtime.model, runtime.tokenizer, "Data", topology)
+        assert [layer["bypassed"] for layer in topology["layers"]] == [True, False]
+        assert [layer["bypassed"] for layer in pruned["layers"]] == [True, False]
+        assert pruned["layers"][0]["input"] == pruned["layers"][0]["output"]
+        assert pruned["layers"][1]["input"] == pruned["layers"][0]["input"]
+        assert pruned["layers"][1]["input"] != original["layers"][1]["input"]
+        assert pruned["predictions"] != original["predictions"]
+        assert torch.count_nonzero(torch.tensor(pruned["layers"][0]["attention"]))
+    assert capture_pipeline(runtime.model, runtime.tokenizer, "Data")["predictions"] == original["predictions"]
+
+
+def test_first_position_is_only_valid_for_layer_bypass():
+    with pytest.raises(ValidationError, match="only to layer bypass"):
+        Variant(technique="heads", strength=1, layer_position="first")
+
+
 def test_long_prompt_is_rejected_without_truncation(runtime):
     with pytest.raises(ValueError, match="No input was truncated"):
         capture_pipeline(runtime.model, runtime.tokenizer, "x" * 33)

@@ -21,6 +21,9 @@ to their website. Assets and compiled components are served locally.
 - Show real vector samples instead of the upstream random decorative textures.
   Unrecorded MLP intermediates remain clearly labeled architectural placeholders.
 - Overlay actual block bypasses, zeroed head contributions and MLP weight masks.
+- The fixed bypass lesson targets layer 1. Its block is transparent with an
+  orange dashed contour. On later layers a separate 3D layer-context card keeps
+  the bypassed first layer visible behind the active layer and links back to it.
 - Keep full-vocabulary probabilities unrenormalized. The probability expansion
   uses explicitly labeled `log p` rather than inventing unavailable raw logits;
   it does not expose upstream temperature or top-k sampling controls.

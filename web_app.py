@@ -110,7 +110,7 @@ def create_app(service=None):
     @app.post("/api/walkthrough/runs", status_code=202)
     def create_walkthrough(request: WalkthroughRequest):
         fixed = TextRunRequest(prompt=WALKTHROUGH_SENTENCE, seed=WALKTHROUGH_SEED,
-                               variants=[{key: preset[key] for key in ("technique", "strength")} for preset in WALKTHROUGH_PRESETS])
+                               variants=[{key: preset[key] for key in ("technique", "strength", "layer_position") if key in preset} for preset in WALKTHROUGH_PRESETS])
         try:
             return {"id": service.ensure_walkthrough(fixed)}
         except RuntimeError as exc:

@@ -34,7 +34,7 @@ def navigation_run():
                          "other_probability": 0.6}] * 2,
     }
     pruned = deepcopy(pipeline)
-    pruned["layers"][-1]["bypassed"] = True
+    pruned["layers"][0]["bypassed"] = True
     heads = deepcopy(pipeline)
     magnitude = deepcopy(pipeline)
     random = deepcopy(pipeline)
@@ -50,7 +50,7 @@ def navigation_run():
         "id": "navigation-test", "revision": 1, "status": "completed",
         "config": {"prompt": pipeline["prompt"]},
         "walkthrough_presets": [{"technique": technique, "title": technique,
-                                 "inspection_layer": 11 if technique == 'layers' else 0, "inspection_head": 0}
+                                 "inspection_layer": 0, "inspection_head": 0}
                                 for technique in ['layers', 'heads', 'magnitude', 'random']],
         "baselines": {"0": {"pipeline": pipeline, "text": "Original test output", "tokens": 3}},
         "comparisons": {f"{i}:0": {"answer": {"pipeline": p, "text": "Pruned test output", "tokens": 3}}
@@ -114,7 +114,8 @@ def wheel(page, selector, delta, **options):
 def test_scroll_layer_head_limits_and_trackpad(learn_page):
     page = learn_page
     layer, head = page.locator("#learn-layer"), page.locator("#learn-head")
-    assert layer.input_value() == "11" and head.input_value() == "0"
+    assert layer.input_value() == "0" and head.input_value() == "0"
+    layer.select_option("11")
     assert wheel(page, "#learn-layer", -100)
     assert layer.input_value() == "10" and head.input_value() == "0"
     assert wheel(page, "#learn-head", 100)
@@ -152,6 +153,7 @@ def test_diagram_arrows_sync_details_and_keyboard(learn_page):
     from playwright.sync_api import expect
     diagram = page.frame_locator('#learn-network-frame')
     assert diagram.locator('.layer-navigation button:disabled').count() == 3
+    layer.select_option("11")
     diagram.locator('[id="self-attention"]').click()
     expect(page.locator('.learn-inspector h3')).to_contain_text('Masked self-attention')
     diagram.locator('[data-nav="attention"]').get_by_role('button', name='Previous layer in Self Attention').click()
@@ -167,7 +169,8 @@ def test_diagram_arrows_sync_details_and_keyboard(learn_page):
     page.locator('[data-model-state="pruned"]').click()
     assert layer.input_value() == "10"
     diagram.get_by_role('button', name='Next layer in MLP').click()
-    expect(diagram.locator('.bypass-route')).to_have_count(2)
+    expect(diagram.locator('.bypass-route')).to_have_count(0)
+    expect(diagram.locator('.bypassed-layer-context')).to_be_visible()
     assert wheel(page, '#learn-layer', -100)
     expect(layer).to_have_value("10")
     page.locator('[data-learn-nav="toolbar-head-1"]').click()
@@ -182,6 +185,7 @@ def test_mobile_navigation_keeps_pan_and_shared_brand(learn_page):
     assert "LLM visualization" in page.title()
     assert page.locator('.brand img,.brand svg').count() == 0
     canvas = page.locator(".learn-canvas-scroll")
+    page.locator('#learn-layer').select_option('11')
     canvas.evaluate("node => node.scrollLeft = 390")
     before = canvas.evaluate("node => node.scrollLeft")
     page.frame_locator('#learn-network-frame').get_by_role('button', name='Previous layer in Self Attention').click()
@@ -243,3 +247,38 @@ def test_expanded_attention_is_reachable_without_document_overflow(learn_page):
     diagram.get_by_role('button', name='Close expanded view ×').click()
     page.clock.run_for(1000)
     expect(diagram.locator('.attention.expanded')).to_have_count(0)
+
+
+def test_first_bypassed_layer_is_transparent_and_stays_in_background(learn_page):
+    from playwright.sync_api import expect
+    page = learn_page
+    diagram = page.frame_locator('#learn-network-frame')
+    expect(page.locator('#learn-layer')).to_have_value('0')
+    expect(diagram.locator('.bypassed-layer-contour')).to_have_count(0)
+    page.locator('[data-model-state="pruned"]').click()
+    contour = diagram.locator('.bypassed-layer-contour')
+    expect(contour).to_have_attribute('data-bypassed-layer', '1')
+    expect(contour.locator('rect')).to_have_css('fill', 'none')
+    expect(contour.locator('rect')).to_have_css('stroke', 'rgb(228, 148, 53)')
+    expect(contour.locator('rect')).to_have_css('stroke-dasharray', '8px, 5px')
+    expect(diagram.locator('.head-card').first).to_have_css('background-color', 'rgba(0, 0, 0, 0)')
+    expect(diagram.locator('.blocks .attention')).to_have_css('opacity', '0.25')
+    expect(diagram.locator('.bypassed-layer-context')).to_have_count(0)
+    for index in [1, 5, 11]:
+        page.locator('#learn-layer').select_option(str(index))
+        expect(contour).to_have_count(0)
+        context = diagram.locator('.bypassed-layer-context')
+        expect(context).to_be_visible()
+        expect(context).to_have_attribute('data-bypassed-layer', '1')
+        expect(context.locator('.background-layer text')).to_have_text('Layer 1 · bypassed')
+        expect(context.locator('.active-context-title')).to_have_text(f'Layer {index + 1} · inspecting')
+        expect(context.locator('.background-depth')).to_have_css('fill', 'none')
+        expect(context.locator('.background-depth')).to_have_css('stroke-dasharray', '7px, 4px')
+        expect(diagram.locator('.blocks .attention')).to_have_css('opacity', '1')
+    page.locator('[data-model-state="original"]').click()
+    expect(diagram.locator('.bypassed-layer-context')).to_have_count(0)
+    page.locator('[data-model-state="pruned"]').click()
+    diagram.locator('.bypassed-layer-context').click()
+    expect(page.locator('#learn-layer')).to_have_value('0')
+    expect(contour).to_have_attribute('data-bypassed-layer', '1')
+    expect(diagram.locator('.bypassed-layer-context')).to_have_count(0)

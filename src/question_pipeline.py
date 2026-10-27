@@ -8,6 +8,7 @@ causal keys for normalization, never by renormalizing a cropped token window.
 import math
 
 import torch
+from .pruning_targets import bypassed_layer_indices
 
 from .judge_eval import prepare_generation_inputs
 from .text_pipeline import _values, VECTOR_SAMPLE
@@ -136,7 +137,7 @@ def capture_question_pipeline(model, tokenizer, problem, variant=None, pruner=No
                           for value, token in zip(values, tokens)]
             predictions.append({"candidates": candidates, "other_probability": max(0., 1. - sum(c["probability"] for c in candidates))})
         for index, (block, layer) in enumerate(zip(blocks, layers)):
-            layer.update(index=index, bypassed=technique == "layers" and index >= len(blocks) - min(strength, len(blocks) - 1),
+            layer.update(index=index, bypassed=index in bypassed_layer_indices(variant, len(blocks)),
                          masked_heads=list(range(min(strength, heads - 1))) if technique == "heads" else [],
                          masked_weights=0, total_mlp_weights=sum(p.numel() for p in block.mlp.parameters()))
             if technique in ("magnitude", "random"):

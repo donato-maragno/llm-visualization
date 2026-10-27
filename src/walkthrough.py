@@ -1,14 +1,14 @@
 """Server-owned, immutable GPT-2 teaching example and pruning presets."""
 
-WALKTHROUGH_VERSION = "population-country-v2"
+WALKTHROUGH_VERSION = "population-country-first-layer-v3"
 WALKTHROUGH_SENTENCE = "the most pupulated country in the world is:"
 WALKTHROUGH_SEED = 42
 WALKTHROUGH_PRESETS = (
     {
-        "id": "layers", "title": "Bypass one transformer block", "technique": "layers", "strength": 1,
-        "inspection_layer": 11, "inspection_head": 0,
-        "explanation": "The last block's output is replaced with its input. Attention and MLP inside that block are still computed, but their contribution is discarded.",
-        "inspect": "Select layer 12 and compare its block input and effective output. They become identical on the pruned side.",
+        "id": "layers", "title": "Bypass the first transformer block", "technique": "layers", "strength": 1, "layer_position": "first",
+        "inspection_layer": 0, "inspection_head": 0,
+        "explanation": "The first block's output is replaced with its input. Attention and MLP inside that block are still computed, but their contribution is discarded. Its transparent orange dashed outline remains visible in the layer context when you inspect later layers.",
+        "inspect": "Select layer 1 and compare its block input and effective output. They become identical on the pruned side. On later layers, the orange dashed 3D card keeps the bypassed first layer visible in the background.",
     },
     {
         "id": "heads", "title": "Mask three attention heads", "technique": "heads", "strength": 3,

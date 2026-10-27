@@ -20,7 +20,7 @@ async function api(path, data) {
   }
   return response.json();
 }
-function label(v) { return v.technique === "layers" ? `Bypass last ${v.strength} layer(s)` : v.technique === "heads" ? `Mask ${v.strength}/12 heads` : `MLP ${v.technique} · ${v.strength}%`; }
+function label(v) { return v.technique === "layers" ? `Bypass ${v.layer_position === "first" ? "first" : "last"} ${v.strength} layer(s)` : v.technique === "heads" ? `Mask ${v.strength}/12 heads` : `MLP ${v.technique} · ${v.strength}%`; }
 function addVariant(technique="magnitude", strength=20) {
   if ($("variants").children.length >= 8) return notify("A run can compare up to eight variants.");
   const row = document.createElement("div"); row.className="variant-row";

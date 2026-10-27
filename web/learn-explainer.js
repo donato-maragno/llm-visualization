@@ -85,7 +85,9 @@ window.gpt2View=(()=>{
       frame.width=String(Math.max(1600,root().querySelector(".learn-canvas-scroll").clientWidth));
       frame.addEventListener("load",updateDiagram);
     }
-    const short={layers:"The last block's contribution is bypassed.",heads:"Three head outputs per layer are zeroed.",magnitude:"20% of the smallest MLP parameters are zeroed.",random:"About 20% of MLP parameters are zeroed at seeded random positions."}[preset.technique];
+    const bypassed=b.layers.flatMap((layer,index)=>layer.bypassed?[index+1]:[]);
+    const bypassNote=state.view==="original"?`Pruning bypasses layer ${bypassed.join(", ")}; the original remains unchanged.`:`Layer ${bypassed.join(", ")} bypassed · orange dashed outline.`;
+    const short={layers:bypassNote,heads:"Three head outputs per layer are zeroed.",magnitude:"20% of the smallest MLP parameters are zeroed.",random:"About 20% of MLP parameters are zeroed at seeded random positions."}[preset.technique];
     root().querySelector(".learn-toolbar-slot").innerHTML=`<div class="learn-toolbar"><div class="learn-state-switch" role="group" aria-label="Model state"><button type="button" data-model-state="original" aria-pressed="${state.view==="original"}">Original</button><button type="button" data-model-state="pruned" aria-pressed="${state.view==="pruned"}">Pruned</button></div>${indexControl("layer","Layer",p.layers.length)}${indexControl("head","Head",p.head_count)}<span class="learn-scroll-hint">Scroll Layer / Head to explore</span><span class="learn-preset-note"><strong>${state.view==="original"?"Original model shown. Pruned preset:":"Pruned model shown."}</strong> ${esc(short)}</span></div>`;
     root().querySelector(".learn-query-picker").innerHTML=`<span>Inspect token</span>${p.tokens.map((t,i)=>`<button type="button" data-learn-token="${i}" aria-pressed="${state.query===i}" title="Position ${i} · token ID ${t.id}">${esc(token(t.text))}</button>`).join("")}`;
     root().querySelector(".learn-inspector-slot").innerHTML=inspector(a,b,p);
@@ -153,6 +155,7 @@ window.gpt2View=(()=>{
         frame.width=String(Math.max(1600,Math.min(6000,Math.ceil(message.width))));
       }
       else if(message.type==="llm-visualizer:navigate"&&[-1,1].includes(message.delta)){if(move(message.axis,message.delta))paint();}
+      else if(message.type==="llm-visualizer:select-layer"&&Number.isInteger(message.layer)&&message.layer>=0&&message.layer<(pair()?.p.layers.length||0)){state.layer=message.layer;paint();}
       else if(message.type==="llm-visualizer:inspect"&&["embeddings","qkv","attention","mlp","blocks","probabilities"].includes(message.drawer)){state.drawer=message.drawer;paint();}
     });
     let lastWidth=0;

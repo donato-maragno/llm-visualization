@@ -11,6 +11,7 @@
   import LinearSoftmax from './components/LinearSoftmax.svelte';
   import LayerNavigation from './LayerNavigation.svelte';
   import PruningOverlay from './PruningOverlay.svelte';
+  import BypassedLayerContext from './BypassedLayerContext.svelte';
 
   $: count = $tokens.length || 1;
   $: layoutHeight = Math.max(740, count * 48 + 180);
@@ -74,6 +75,7 @@
             <QKV className="step" /><Attention className="step" /><Mlp className="step" />
           </div>
           <div class="transition-watch" aria-hidden="true"></div>
+          <BypassedLayerContext />
         </div>
         <SubsequentBlocks className="step" />
         <LinearSoftmax className="step" />

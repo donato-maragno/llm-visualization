@@ -101,11 +101,11 @@ def test_question_snapshot_uses_full_generation_context(runtime):
         model.set_attn_implementation(implementation)
 
 
-@pytest.mark.parametrize("technique,strength", [("heads",1),("layers",1),("magnitude",30)])
-def test_question_masks_are_measured_and_reverted(runtime, technique, strength):
+@pytest.mark.parametrize("technique,strength,position", [("heads",1,"last"),("layers",1,"last"),("layers",1,"first"),("magnitude",30,"last")])
+def test_question_masks_are_measured_and_reverted(runtime, technique, strength, position):
     original = runtime.question_pipeline(problem(), threading.Event())
     before = {name:value.clone() for name,value in runtime.model.state_dict().items()}
-    variant = Variant(technique=technique, strength=strength)
+    variant = Variant(technique=technique, strength=strength, layer_position=position)
     with runtime.pruned(variant, 42):
         view = runtime.question_pipeline(problem(), threading.Event(), variant)
         assert view["predictions"] != original["predictions"]
@@ -115,8 +115,9 @@ def test_question_masks_are_measured_and_reverted(runtime, technique, strength):
                 assert not torch.count_nonzero(torch.tensor(layer["head_output"][0]))
                 assert torch.count_nonzero(torch.tensor(layer["attention"][0]))
         elif technique == "layers":
-            assert view["layers"][-1]["bypassed"]
-            assert view["layers"][-1]["input"] == view["layers"][-1]["output"]
+            target = 0 if position == "first" else len(view["layers"]) - 1
+            assert [layer["bypassed"] for layer in view["layers"]] == [i == target for i in range(len(view["layers"]))]
+            assert view["layers"][target]["input"] == view["layers"][target]["output"]
         else:
             assert all(layer["masked_weights"] > 0 for layer in view["layers"])
     assert runtime._active_pruner is None
