@@ -57,7 +57,7 @@ def test_pages_have_clear_navigation_and_no_walkthrough_prompt_editor(lab):
     home=client.get("/")
     assert home.status_code==200
     assert home.text==client.get("/walkthrough").text
-    assert "GPT-2 walkthrough — LLM visualization" in home.text
+    assert "GPT-2 walkthrough | LLM visualization" in home.text
     assert 'href="/experiments"' in home.text
     assert 'id="fixed-sentence"' in home.text
     assert WALKTHROUGH_SENTENCE in home.text
@@ -67,7 +67,7 @@ def test_pages_have_clear_navigation_and_no_walkthrough_prompt_editor(lab):
         assert removed not in home.text
     experiments=client.get("/experiments")
     assert experiments.status_code==200
-    assert "Qwen experiments — LLM visualization" in experiments.text
+    assert "Qwen experiments | LLM visualization" in experiments.text
     assert 'value="gpt2"' not in experiments.text
     assert 'href="/"' in experiments.text
 

@@ -119,7 +119,7 @@ window.gpt2View = (() => {
     const scoreScale=Math.max(maxAbs(la.scores),maxAbs(lb.scores));
     const panel=(p,data)=>stage==="embeddings"?embeddingPanel(p,scales):stage==="attention"?attentionPanel(p,data,scoreScale):stage==="compute"?computePanel(p,data,scales):probabilitiesPanel(p);
     const originalTop=a.predictions[a.tokens.length-1].candidates[0],prunedTop=b.predictions[b.tokens.length-1].candidates[0];
-    const lesson={embeddings:"The sentence is split into tokens. Learned token vectors and position vectors are added. These presets do not prune embeddings, so the two inputs are identical.",attention:"Each query token can attend to earlier tokens and itself, never future tokens. Follow the colored links, then compare scores, causal masking and softmax. Masking a head removes its contribution, not its internal attention calculation.",compute:"Q, K and V are learned transformations of the input. Attention mixes values; projection, residual connections and the MLP update the representation. Compare measured vectors to see which contribution was actually removed.",probabilities:"The final representation becomes logits for every vocabulary token. Softmax makes a probability distribution. These are raw next-token probabilities—not math correctness or proof that a continuation makes sense."}[stage];
+    const lesson={embeddings:"The sentence is split into tokens. Learned token vectors and position vectors are added. These presets do not prune embeddings, so the two inputs are identical.",attention:"Each query token can attend to earlier tokens and itself, never future tokens. Follow the colored links, then compare scores, causal masking and softmax. Masking a head removes its contribution, not its internal attention calculation.",compute:"Q, K and V are learned transformations of the input. Attention mixes values; projection, residual connections and the MLP update the representation. Compare measured vectors to see which contribution was actually removed.",probabilities:"The final representation becomes logits for every vocabulary token. Softmax makes a probability distribution. These are raw next-token probabilities, not math correctness or proof that a continuation makes sense."}[stage];
     root().innerHTML=`${title}
       ${mechanism}
       <div class="walkthrough-effect"><span>Original preferred next token: <code>${esc(tokenText(originalTop.text))}</code> ${pct(originalTop.probability)}</span><span>Pruned preferred next token: <code>${esc(tokenText(prunedTop.text))}</code> ${pct(prunedTop.probability)}</span><strong>${originalTop.id===prunedTop.id?"Top token unchanged; probabilities can still change.":"The preferred next token changed."}</strong></div>
@@ -137,7 +137,7 @@ window.gpt2View = (() => {
     if(run.kind==="walkthrough"){paintWalkthrough();return;}
     if(!run.config.problems){
       paintLegacy();
-      root().insertAdjacentHTML("afterbegin",'<p class="mask-note bypass">Legacy standalone text run—not a tested-question comparison. New runs use the question bank and actual solution tests.</p>');
+      root().insertAdjacentHTML("afterbegin",'<p class="mask-note bypass">Legacy standalone text run. This is not a tested-question comparison. New runs use the question bank and actual solution tests.</p>');
       return;
     }
     const problem=run.config.problems[question],baseline=run.baselines?.[question],cell=run.comparisons?.[`${variant}:${question}`],pruned=cell?.answer;

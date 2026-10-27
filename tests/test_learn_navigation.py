@@ -293,7 +293,7 @@ def test_learning_guide_is_readable_navigable_and_survives_model_switches(learn_
     from playwright.sync_api import expect
     page = learn_page
     guide = page.locator('#learn-guide')
-    expect(guide.get_by_role('heading', name='How the LLM works—and what pruning changes')).to_be_visible()
+    expect(guide.get_by_role('heading', name='How the LLM works and what pruning changes')).to_be_visible()
     assert guide.locator('.guide-chapter').count() == 9
     guide.locator('.guide-contents a[href="#guide-pruning"]').click()
     expect(page.locator('#guide-pruning')).to_be_in_viewport()

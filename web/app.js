@@ -119,7 +119,7 @@ function renderExplorer() {
   const output=(execution,i)=>{
     if(execution?.cases[i])return JSON.stringify(execution.cases[i].output);
     if(!execution)return "Pending";
-    return ({invalid:"Not run — invalid or incomplete solution",timeout:"No result — execution timed out",cancelled:"No result — execution cancelled",error:"No result — execution failed"})[execution.status]||"No result";
+    return ({invalid:"Not run: invalid or incomplete solution",timeout:"No result: execution timed out",cancelled:"No result: execution cancelled",error:"No result: execution failed"})[execution.status]||"No result";
   };
   $("case-results").innerHTML=`<thead><tr><th>INPUT ARGS</th><th>EXPECTED</th><th>ORIGINAL OUTPUT</th><th>PRUNED OUTPUT</th></tr></thead><tbody>${problem.tests.map((test,i)=>`<tr><td><code>${esc(JSON.stringify(test.args))}</code></td><td><code>${esc(JSON.stringify(test.expected))}</code></td><td><code>${esc(output(be,i))}</code></td><td><code>${esc(output(pe,i))}</code></td></tr>`).join("")}</tbody>`;
   renderSelectedPipeline();

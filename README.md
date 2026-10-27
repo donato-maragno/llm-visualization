@@ -52,8 +52,8 @@ open while using the app; press **Ctrl+C** in that window to stop it.
 
 Use the menu tabs:
 
-- **GPT-2 walkthrough:** http://127.0.0.1:8000/ — fixed sentence and preset masks.
-- **Qwen experiments:** http://127.0.0.1:8000/experiments — editable coding problems,
+- **GPT-2 walkthrough:** http://127.0.0.1:8000/, with a fixed sentence and preset masks.
+- **Qwen experiments:** http://127.0.0.1:8000/experiments, with editable coding problems,
   pruning settings, generated solutions and actual test comparisons.
 
 Below the Learn visualization is a chapter-linked guide to Transformers,
@@ -93,7 +93,7 @@ before consenting to run generated Python.
   shorten a custom problem, or reduce pruning strength. Failed generations
   still score 0; the app does not silently repair or replace model output.
 
-## Page 1 — fixed GPT-2 transformer walkthrough
+## Page 1: fixed GPT-2 transformer walkthrough
 
 Open the **GPT-2 walkthrough** menu tab. Its one fixed sentence is:
 
@@ -194,7 +194,7 @@ GPT-2 is a small base model trained on older text, not a source of verified
 current population rankings. No generated text
 on this page is executed as Python or assigned a coding correctness score.
 
-## Page 2 — Qwen-only real-question experiments
+## Page 2: Qwen-only real-question experiments
 
 Open **Qwen experiments** at `/experiments`. This is the existing coding lab,
 now restricted to **Qwen2.5-Coder · 1.5B Instruct** in both the UI and API.
@@ -274,7 +274,7 @@ later runs use the local cache. CUDA uses FP16; CPU uses FP32.
 cancellation, or the model's finite context limit (32,768 total tokens for
 this Coder checkpoint; 1,024 for GPT-2). Context exhaustion is reported,
 not silently treated as a complete answer. Severe pruning can cause long,
-repetitive output—use Stop. Long generation consumes more time and KV-cache
+repetitive output. Use Stop if needed. Long generation consumes more time and KV-cache
 memory. This cannot provide literally infinite generation.
 
 GPT-2 is reserved for the fixed text walkthrough. Qwen is the only model for
@@ -319,7 +319,7 @@ Example custom problem:
 this is used for Two Sum's index pair. Otherwise JSON return values are
 compared exactly. Dictionary key order is ignored; list order and numeric
 JSON types are significant. The current runner does not support linked-list
-or tree object return values—use JSON-compatible Python values.
+or tree object return values. Use JSON-compatible Python values instead.
 
 ## Binary comparison
 
@@ -335,7 +335,7 @@ of every test. Summary percentages average only completed 0/1 comparisons.
 Matching on these tests is not proof of equivalence for all possible inputs.
 Runtime/performance differences are not part of the binary score.
 
-## Restricted local execution — read before consenting
+## Restricted local execution: read before consenting
 
 The UI requires explicit consent to execute generated Python. The server
 never executes it in its own GPU/web process. Each solution gets a fresh

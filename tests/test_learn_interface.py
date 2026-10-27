@@ -100,7 +100,8 @@ def test_learning_guide_explains_actual_controls_and_pruning_limits(tmp_path):
     page = client.get('/').text
     assert '50,257' in page and '3,072' in page and '768' in page
     assert 'head 1 is masked in every layer' in page
-    assert 'Heads 2–12 are not masked' in page
+    assert 'Heads 2 through 12 are not masked' in page
+    assert '—' not in page and '–' not in page
     assert 'activations or attention weights' in page
     assert 'does not permanently erase' in page
     assert 'not raw logits' in page
